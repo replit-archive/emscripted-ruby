@@ -3222,7 +3222,7 @@ parse_string(NODE *quote)
 	tokadd('#');
     }
     pushback(c);
-    if (tokadd_string(func, term, paren, &quote->nd_nest) == -1) {
+    if (tokadd_string(func, term, paren, (int*)&quote->nd_nest) == -1) {
 	ruby_sourceline = nd_line(quote);
 	rb_compile_error("unterminated string meets end of file");
 	return tSTRING_END;

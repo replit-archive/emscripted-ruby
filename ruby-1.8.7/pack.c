@@ -52,8 +52,7 @@
 
 #define define_swapx(x, xtype)		\
 static xtype				\
-TOKEN_PASTE(swap,x)(z)			\
-    xtype z;				\
+TOKEN_PASTE(swap,x)(xtype z)			\
 {					\
     xtype r;				\
     xtype *zp;				\

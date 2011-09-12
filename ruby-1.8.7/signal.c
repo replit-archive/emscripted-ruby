@@ -278,10 +278,10 @@ void
 ruby_default_signal(int sig)
 {
 #ifndef MACOS_UNUSE_SIGNAL
-    extern rb_pid_t getpid _((void));
-
-    signal(sig, SIG_DFL);
-    kill(getpid(), sig);
+//     extern rb_pid_t getpid _((void));
+// 
+//     signal(sig, SIG_DFL);
+//     kill(getpid(), sig);
 #endif
 }
 

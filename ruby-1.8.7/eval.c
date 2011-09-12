@@ -12,6 +12,7 @@
 
 **********************************************************************/
 
+extern "C" {
 #include "ruby.h"
 #include "node.h"
 #include "env.h"
@@ -208,33 +209,32 @@ int _setjmp(), _longjmp();
 #endif
 
 #ifdef HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#else
-      #undef __NFDBITS
-      #undef __FDMASK
-      #undef FD_ZERO
-      #undef FD_CLR
-      #undef FD_SET
-      #undef FD_ISSET
+  #include <sys/select.h>
+  #undef __NFDBITS
+  #undef __FDMASK
+  #undef FD_ZERO
+  #undef FD_CLR
+  #undef FD_SET
+  #undef FD_ISSET
 
-      #define __NFDBITS (8 * (int) sizeof (long int))
-      #define __FDELT(d)  ((d) / __NFDBITS)
-      #define __FDMASK(d) ((long int) 1 << ((d) % __NFDBITS))
+  #define __NFDBITS (8 * (int) sizeof (long int))
+  #define __FDELT(d)  ((d) / __NFDBITS)
+  #define __FDMASK(d) ((long int) 1 << ((d) % __NFDBITS))
 
-      # define FD_ZERO(set)  \
-        do {                        \
-          unsigned int __i;                   \
-          fd_set *__arr = (set);                  \
-          for (__i = 0; __i < sizeof (fd_set) / sizeof (long int); ++__i)       \
-            __FDS_BITS (__arr)[__i] = 0;                \
-        } while (0)
+  # define FD_ZERO(set)  \
+    do {                        \
+      unsigned int __i;                   \
+      fd_set *__arr = (set);                  \
+      for (__i = 0; __i < sizeof (fd_set) / sizeof (long int); ++__i)       \
+        __FDS_BITS (__arr)[__i] = 0;                \
+    } while (0)
 
-      #define FD_SET(d, set) \
-        ((void) (__FDS_BITS (set)[__FDELT (d)] |= __FDMASK (d)))
-      #define FD_CLR(d, set) \
-        ((void) (__FDS_BITS (set)[__FDELT (d)] &= ~__FDMASK (d)))
-      #define FD_ISSET(d, set) \
-        ((__FDS_BITS (set)[__FDELT (d)] & __FDMASK (d)) != 0)
+  #define FD_SET(d, set) \
+    ((void) (__FDS_BITS (set)[__FDELT (d)] |= __FDMASK (d)))
+  #define FD_CLR(d, set) \
+    ((void) (__FDS_BITS (set)[__FDELT (d)] &= ~__FDMASK (d)))
+  #define FD_ISSET(d, set) \
+    ((__FDS_BITS (set)[__FDELT (d)] & __FDMASK (d)) != 0)
 #endif
 
 #include <sys/stat.h>
@@ -991,7 +991,7 @@ static struct tag *prot_tag;
 #define PROT_LAMBDA INT2FIX(2)      /* 5 */
 #define PROT_YIELD  INT2FIX(3)      /* 7 */
 
-#define EXEC_TAG()    ruby_setjmp(prot_tag->buf)
+#define EXEC_TAG()    ruby_setjmp(((void)(0)), prot_tag->buf)
 
 #define JUMP_TAG(st) do {            \
     ruby_frame = prot_tag->frame;      \
@@ -1196,98 +1196,98 @@ error_print()
 
     PUSH_TAG(PROT_NONE);
     if (EXEC_TAG() == 0) {
-	errat = get_backtrace(ruby_errinfo);
+        errat = get_backtrace(ruby_errinfo);
     }
     else {
-	errat = Qnil;
+        errat = Qnil;
     }
     if (EXEC_TAG()) goto error;
     if (NIL_P(errat)){
-	ruby_set_current_source();
-	if (ruby_sourcefile)
-	    warn_printf("%s:%d", ruby_sourcefile, ruby_sourceline);
-	else
-	    warn_printf("%d", ruby_sourceline);
+        ruby_set_current_source();
+        if (ruby_sourcefile)
+            warn_printf("%s:%d", ruby_sourcefile, ruby_sourceline);
+        else
+            warn_printf("%d", ruby_sourceline);
     }
     else if (RARRAY(errat)->len == 0) {
-	error_pos();
+        error_pos();
     }
     else {
-	VALUE mesg = RARRAY(errat)->ptr[0];
+        VALUE mesg = RARRAY(errat)->ptr[0];
 
-	if (NIL_P(mesg)) error_pos();
-	else {
-	    warn_print2(RSTRING(mesg)->ptr, RSTRING(mesg)->len);
-	}
+        if (NIL_P(mesg)) error_pos();
+        else {
+            warn_print2(RSTRING(mesg)->ptr, RSTRING(mesg)->len);
+        }
     }
 
     eclass = CLASS_OF(ruby_errinfo);
     if (EXEC_TAG() == 0) {
-  	e = rb_funcall(ruby_errinfo, rb_intern("message"), 0, 0);
- 	StringValue(e);
-	einfo = RSTRING(e)->ptr;
-	elen = RSTRING(e)->len;
+          e = rb_funcall(ruby_errinfo, rb_intern("message"), 0, 0);
+         StringValue(e);
+        einfo = RSTRING(e)->ptr;
+        elen = RSTRING(e)->len;
     }
     else {
-	einfo = "";
-	elen = 0;
+        einfo = "";
+        elen = 0;
     }
     if (EXEC_TAG()) goto error;
     if (eclass == rb_eRuntimeError && elen == 0) {
-	warn_print(": unhandled exception\n");
+        warn_print(": unhandled exception\n");
     }
     else {
-	VALUE epath;
+        VALUE epath;
 
-	epath = rb_class_name(eclass);
-	if (elen == 0) {
-	    warn_print(": ");
-	    warn_print2(RSTRING(epath)->ptr, RSTRING(epath)->len);
-	    warn_print("\n");
-	}
-	else {
-	    char *tail  = 0;
-	    long len = elen;
+        epath = rb_class_name(eclass);
+        if (elen == 0) {
+            warn_print(": ");
+            warn_print2(RSTRING(epath)->ptr, RSTRING(epath)->len);
+            warn_print("\n");
+        }
+        else {
+            char *tail  = 0;
+            long len = elen;
 
-	    if (RSTRING(epath)->ptr[0] == '#') epath = 0;
-	    if ((tail = memchr(einfo, '\n', elen)) != 0) {
-		len = tail - einfo;
-		tail++;		/* skip newline */
-	    }
-	    warn_print(": ");
-	    warn_print2(einfo, len);
-	    if (epath) {
-		warn_print(" (");
-		warn_print2(RSTRING(epath)->ptr, RSTRING(epath)->len);
-		warn_print(")\n");
-	    }
-	    if (tail && elen>len+1) {
-		warn_print2(tail, elen-len-1);
-		if (einfo[elen-1] != '\n') warn_print2("\n", 1);
-	    }
-	}
+            if (RSTRING(epath)->ptr[0] == '#') epath = 0;
+            if ((tail = memchr(einfo, '\n', elen)) != 0) {
+                len = tail - einfo;
+                tail++;                /* skip newline */
+            }
+            warn_print(": ");
+            warn_print2(einfo, len);
+            if (epath) {
+                warn_print(" (");
+                warn_print2(RSTRING(epath)->ptr, RSTRING(epath)->len);
+                warn_print(")\n");
+            }
+            if (tail && elen>len+1) {
+                warn_print2(tail, elen-len-1);
+                if (einfo[elen-1] != '\n') warn_print2("\n", 1);
+            }
+        }
     }
 
     if (!NIL_P(errat)) {
-	long i;
-	struct RArray *ep = RARRAY(errat);
+        long i;
+        struct RArray *ep = RARRAY(errat);
         int truncate = eclass == rb_eSysStackError;
 
 #define TRACE_MAX (TRACE_HEAD+TRACE_TAIL+5)
 #define TRACE_HEAD 8
 #define TRACE_TAIL 5
 
-	ep = RARRAY(errat);
-	for (i=1; i<ep->len; i++) {
-	    if (TYPE(ep->ptr[i]) == T_STRING) {
-		warn_printf("\tfrom %s\n", RSTRING(ep->ptr[i])->ptr);
-	    }
-	    if (truncate && i == TRACE_HEAD && ep->len > TRACE_MAX) {
-		warn_printf("\t ... %ld levels...\n",
-			ep->len - TRACE_HEAD - TRACE_TAIL);
-		i = ep->len - TRACE_TAIL;
-	    }
-	}
+        ep = RARRAY(errat);
+        for (i=1; i<ep->len; i++) {
+            if (TYPE(ep->ptr[i]) == T_STRING) {
+                warn_printf("\tfrom %s\n", RSTRING(ep->ptr[i])->ptr);
+            }
+            if (truncate && i == TRACE_HEAD && ep->len > TRACE_MAX) {
+                warn_printf("\t ... %ld levels...\n",
+                        ep->len - TRACE_HEAD - TRACE_TAIL);
+                i = ep->len - TRACE_TAIL;
+            }
+        }
     }
   error:
     POP_TAG();
@@ -1351,19 +1351,19 @@ ruby_init()
 
     PUSH_TAG(PROT_NONE);
     if ((state = EXEC_TAG()) == 0) {
-	rb_call_inits();
-	ruby_class = rb_cObject;
-	ruby_frame->self = ruby_top_self;
-	ruby_top_cref = rb_node_newnode(NODE_CREF,rb_cObject,0,0);
-	ruby_cref = ruby_top_cref;
-	rb_define_global_const("TOPLEVEL_BINDING", rb_f_binding(ruby_top_self));
+        rb_call_inits();
+        ruby_class = rb_cObject;
+        ruby_frame->self = ruby_top_self;
+        ruby_top_cref = rb_node_newnode(NODE_CREF,rb_cObject,0,0);
+        ruby_cref = ruby_top_cref;
+        rb_define_global_const("TOPLEVEL_BINDING", rb_f_binding(ruby_top_self));
 #ifdef __MACOS__
       _macruby_init();
 #elif defined(__VMS)
       _vmsruby_init();
 #endif
-	ruby_prog_init();
-	ALLOW_INTS;
+        ruby_prog_init();
+        ALLOW_INTS;
     }
     POP_TAG();
     if (state) {
@@ -1480,12 +1480,12 @@ ruby_options(int argc, char **argv)
     Init_stack((VALUE*)&state);
     PUSH_TAG(PROT_NONE);
     if ((state = EXEC_TAG()) == 0) {
-	ruby_process_options(argc, argv);
+        ruby_process_options(argc, argv);
     }
     else {
-	trace_func = 0;
-	tracing = 0;
-	exit(error_handle(state));
+        trace_func = 0;
+        tracing = 0;
+        exit(error_handle(state));
     }
     POP_TAG();
 }
@@ -1497,7 +1497,7 @@ ruby_finalize_0()
 {
     PUSH_TAG(PROT_NONE);
     if (EXEC_TAG() == 0) {
-	rb_trap_exit();
+        rb_trap_exit();
     }
     POP_TAG();
     rb_exec_end_proc();
@@ -1535,11 +1535,11 @@ ruby_cleanup(int ex)
     PUSH_TAG(PROT_NONE);
     PUSH_ITER(ITER_NOT);
     if ((state = EXEC_TAG()) == 0) {
-	rb_thread_cleanup();
-	rb_thread_wait_other_threads();
+        rb_thread_cleanup();
+        rb_thread_wait_other_threads();
     }
     else if (ex == 0) {
-	ex = state;
+        ex = state;
     }
     POP_ITER();
     ruby_errinfo = errs[1];
@@ -1588,7 +1588,7 @@ ruby_exec_internal()
     /* default visibility is private at toplevel */
     SCOPE_SET(SCOPE_PRIVATE);
     if ((state = EXEC_TAG()) == 0) {
-	eval_node(ruby_top_self, ruby_eval_tree);
+        eval_node(ruby_top_self, ruby_eval_tree);
     }
     POP_ITER();
     POP_TAG();
@@ -1788,17 +1788,17 @@ rb_eval_cmd(VALUE cmd, VALUE arg, int level)
       level = 4;
     }
     if (TYPE(cmd) != T_STRING) {
-	PUSH_ITER(ITER_NOT);
-	PUSH_TAG(PROT_NONE);
-	ruby_safe_level = level;
-	if ((state = EXEC_TAG()) == 0) {
-	    val = rb_funcall2(cmd, rb_intern("call"), RARRAY(arg)->len, RARRAY(arg)->ptr);
-	}
-	ruby_safe_level = safe;
-	POP_TAG();
-	POP_ITER();
-	if (state) JUMP_TAG(state);
-	return val;
+        PUSH_ITER(ITER_NOT);
+        PUSH_TAG(PROT_NONE);
+        ruby_safe_level = level;
+        if ((state = EXEC_TAG()) == 0) {
+            val = rb_funcall2(cmd, rb_intern("call"), RARRAY(arg)->len, RARRAY(arg)->ptr);
+        }
+        ruby_safe_level = safe;
+        POP_TAG();
+        POP_ITER();
+        if (state) JUMP_TAG(state);
+        return val;
     }
 
     saved_scope = ruby_scope;
@@ -1813,10 +1813,10 @@ rb_eval_cmd(VALUE cmd, VALUE arg, int level)
 
     PUSH_TAG(PROT_NONE);
     if ((state = EXEC_TAG()) == 0) {
-	val = eval(ruby_top_self, cmd, Qnil, 0, 0);
+        val = eval(ruby_top_self, cmd, Qnil, 0, 0);
     }
     if (ruby_scope->flags & SCOPE_DONT_RECYCLE)
-	scope_dup(saved_scope);
+        scope_dup(saved_scope);
     ruby_scope = saved_scope;
     ruby_safe_level = safe;
     POP_TAG();
@@ -2294,15 +2294,15 @@ is_defined(VALUE self, NODE *node, char *buf)
       val = self;
       if (node->nd_recv == (NODE *)1) goto check_bound;
       case NODE_CALL:
-	PUSH_TAG(PROT_NONE);
-	if ((state = EXEC_TAG()) == 0) {
-	    val = rb_eval(self, node->nd_recv);
-	}
-	POP_TAG();
-	if (state) {
-	    ruby_errinfo = Qnil;
-	    return 0;
-	}
+        PUSH_TAG(PROT_NONE);
+        if ((state = EXEC_TAG()) == 0) {
+            val = rb_eval(self, node->nd_recv);
+        }
+        POP_TAG();
+        if (state) {
+            ruby_errinfo = Qnil;
+            return 0;
+        }
       check_bound:
       {
           int call = nd_type(node)==NODE_CALL;
@@ -2396,29 +2396,29 @@ is_defined(VALUE self, NODE *node, char *buf)
       break;
 
       case NODE_COLON2:
-	PUSH_TAG(PROT_NONE);
-	if ((state = EXEC_TAG()) == 0) {
-	    val = rb_eval(self, node->nd_head);
-	}
-	POP_TAG();
-	if (state) {
-	    ruby_errinfo = Qnil;
-	    return 0;
-	}
-	else {
-	    switch (TYPE(val)) {
-	      case T_CLASS:
-	      case T_MODULE:
-		if (rb_const_defined_from(val, node->nd_mid))
-		    return "constant";
-		break;
-	      default:
-		if (rb_method_boundp(CLASS_OF(val), node->nd_mid, 1)) {
-		    return "method";
-		}
-	    }
-	}
-	break;
+        PUSH_TAG(PROT_NONE);
+        if ((state = EXEC_TAG()) == 0) {
+            val = rb_eval(self, node->nd_head);
+        }
+        POP_TAG();
+        if (state) {
+            ruby_errinfo = Qnil;
+            return 0;
+        }
+        else {
+            switch (TYPE(val)) {
+              case T_CLASS:
+              case T_MODULE:
+                if (rb_const_defined_from(val, node->nd_mid))
+                    return "constant";
+                break;
+              default:
+                if (rb_method_boundp(CLASS_OF(val), node->nd_mid, 1)) {
+                    return "method";
+                }
+            }
+        }
+        break;
 
       case NODE_COLON3:
       if (rb_const_defined_from(rb_cObject, node->nd_mid)) {
@@ -2445,16 +2445,16 @@ is_defined(VALUE self, NODE *node, char *buf)
       goto again;
 
       default:
-	PUSH_TAG(PROT_NONE);
-	if ((state = EXEC_TAG()) == 0) {
-	    rb_eval(self, node);
-	}
-	POP_TAG();
-	if (!state) {
-	    return "expression";
-	}
-	ruby_errinfo = Qnil;
-	break;
+        PUSH_TAG(PROT_NONE);
+        if ((state = EXEC_TAG()) == 0) {
+            rb_eval(self, node);
+        }
+        POP_TAG();
+        if (!state) {
+            return "expression";
+        }
+        ruby_errinfo = Qnil;
+        break;
     }
     return 0;
 }
@@ -2641,15 +2641,15 @@ call_trace_func(rb_event_t event, NODE *node, VALUE self, ID id, VALUE klass)
     PUSH_TAG(PROT_NONE);
     raised = thread_reset_raised();
     if ((state = EXEC_TAG()) == 0) {
-	srcfile = rb_str_new2(ruby_sourcefile?ruby_sourcefile:"(ruby)");
-	event_name = get_event_name(event);
-	proc_invoke(trace_func, rb_ary_new3(6, rb_str_new2(event_name),
-					    srcfile,
-					    INT2FIX(ruby_sourceline),
-					    id?ID2SYM(id):Qnil,
-					    self?rb_f_binding(self):Qnil,
-					    klass),
-		    Qundef, 0);
+        srcfile = rb_str_new2(ruby_sourcefile?ruby_sourcefile:"(ruby)");
+        event_name = get_event_name(event);
+        proc_invoke(trace_func, rb_ary_new3(6, rb_str_new2(event_name),
+                                            srcfile,
+                                            INT2FIX(ruby_sourceline),
+                                            id?ID2SYM(id):Qnil,
+                                            self?rb_f_binding(self):Qnil,
+                                            klass),
+                    Qundef, 0);
     }
     if (raised) thread_set_raised();
     POP_TAG();
@@ -2893,30 +2893,30 @@ rb_eval(VALUE self, NODE *n)
 
       /* node for speed-up(top-level loop for -n/-p) */
       case NODE_OPT_N:
-	PUSH_TAG(PROT_LOOP);
-	switch (state = EXEC_TAG()) {
-	  case 0:
-	  opt_n_next:
-	    while (!NIL_P(rb_gets())) {
-	      opt_n_redo:
-		rb_eval(self, node->nd_body);
-	    }
-	    break;
+        PUSH_TAG(PROT_LOOP);
+        switch (state = EXEC_TAG()) {
+          case 0:
+          opt_n_next:
+            while (!NIL_P(rb_gets())) {
+              opt_n_redo:
+                rb_eval(self, node->nd_body);
+            }
+            break;
 
-	  case TAG_REDO:
-	    state = 0;
-	    goto opt_n_redo;
-	  case TAG_NEXT:
-	    state = 0;
-	    goto opt_n_next;
-	  case TAG_BREAK:
-	    state = 0;
-	  default:
-	    break;
-	}
-	POP_TAG();
-	if (state) JUMP_TAG(state);
-	RETURN(Qnil);
+          case TAG_REDO:
+            state = 0;
+            goto opt_n_redo;
+          case TAG_NEXT:
+            state = 0;
+            goto opt_n_next;
+          case TAG_BREAK:
+            state = 0;
+          default:
+            break;
+        }
+        POP_TAG();
+        if (state) JUMP_TAG(state);
+        RETURN(Qnil);
 
       case NODE_SELF:
       RETURN(self);
@@ -3022,74 +3022,74 @@ rb_eval(VALUE self, NODE *n)
       RETURN(Qnil);
 
       case NODE_WHILE:
-	PUSH_TAG(PROT_LOOP);
-	result = Qnil;
-	switch (state = EXEC_TAG()) {
-	  case 0:
-	    if (node->nd_state && !RTEST(rb_eval(self, node->nd_cond)))
-		goto while_out;
-	    do {
-	      while_redo:
-		rb_eval(self, node->nd_body);
-	      while_next:
-		;
-	    } while (RTEST(rb_eval(self, node->nd_cond)));
-	    break;
+        PUSH_TAG(PROT_LOOP);
+        result = Qnil;
+        switch (state = EXEC_TAG()) {
+          case 0:
+            if (node->nd_state && !RTEST(rb_eval(self, node->nd_cond)))
+                goto while_out;
+            do {
+              while_redo:
+                rb_eval(self, node->nd_body);
+              while_next:
+                ;
+            } while (RTEST(rb_eval(self, node->nd_cond)));
+            break;
 
-	  case TAG_REDO:
-	    state = 0;
-	    goto while_redo;
-	  case TAG_NEXT:
-	    state = 0;
-	    goto while_next;
-	  case TAG_BREAK:
-	    if (TAG_DST()) {
-		state = 0;
-		result = prot_tag->retval;
-	    }
-	    /* fall through */
-	  default:
-	    break;
-	}
+          case TAG_REDO:
+            state = 0;
+            goto while_redo;
+          case TAG_NEXT:
+            state = 0;
+            goto while_next;
+          case TAG_BREAK:
+            if (TAG_DST()) {
+                state = 0;
+                result = prot_tag->retval;
+            }
+            /* fall through */
+          default:
+            break;
+        }
       while_out:
-	POP_TAG();
-	if (state) JUMP_TAG(state);
-	RETURN(result);
+        POP_TAG();
+        if (state) JUMP_TAG(state);
+        RETURN(result);
 
       case NODE_UNTIL:
-	PUSH_TAG(PROT_LOOP);
-	result = Qnil;
-	switch (state = EXEC_TAG()) {
-	  case 0:
-	    if (node->nd_state && RTEST(rb_eval(self, node->nd_cond)))
-		goto until_out;
-	    do {
-	      until_redo:
-		rb_eval(self, node->nd_body);
-	      until_next:
-		;
-	    } while (!RTEST(rb_eval(self, node->nd_cond)));
-	    break;
+        PUSH_TAG(PROT_LOOP);
+        result = Qnil;
+        switch (state = EXEC_TAG()) {
+          case 0:
+            if (node->nd_state && RTEST(rb_eval(self, node->nd_cond)))
+                goto until_out;
+            do {
+              until_redo:
+                rb_eval(self, node->nd_body);
+              until_next:
+                ;
+            } while (!RTEST(rb_eval(self, node->nd_cond)));
+            break;
 
-	  case TAG_REDO:
-	    state = 0;
-	    goto until_redo;
-	  case TAG_NEXT:
-	    state = 0;
-	    goto until_next;
-	  case TAG_BREAK:
-	    if (TAG_DST()) {
-		state = 0;
-		result = prot_tag->retval;
-	    }
-	    /* fall through */
-	  default:
-	    break;
-	}
+          case TAG_REDO:
+            state = 0;
+            goto until_redo;
+          case TAG_NEXT:
+            state = 0;
+            goto until_next;
+          case TAG_BREAK:
+            if (TAG_DST()) {
+                state = 0;
+                result = prot_tag->retval;
+            }
+            /* fall through */
+          default:
+            break;
+        }
       until_out:
-	POP_TAG();
-	if (state) JUMP_TAG(state);
-	RETURN(result);
+        POP_TAG();
+        if (state) JUMP_TAG(state);
+        RETURN(result);
 
       case NODE_BLOCK_PASS:
       result = block_pass(self, node);
@@ -3097,48 +3097,48 @@ rb_eval(VALUE self, NODE *n)
 
       case NODE_ITER:
       case NODE_FOR:
-	{
-	    PUSH_TAG(PROT_LOOP);
-	    PUSH_BLOCK(node->nd_var, node->nd_body);
+        {
+            PUSH_TAG(PROT_LOOP);
+            PUSH_BLOCK(node->nd_var, node->nd_body);
 
-	    state = EXEC_TAG();
-	    if (state == 0) {
-	      iter_retry:
-		PUSH_ITER(ITER_PRE);
-		if (nd_type(node) == NODE_ITER) {
-		    result = rb_eval(self, node->nd_iter);
-		}
-		else {
-		    VALUE recv;
+            state = EXEC_TAG();
+            if (state == 0) {
+              iter_retry:
+                PUSH_ITER(ITER_PRE);
+                if (nd_type(node) == NODE_ITER) {
+                    result = rb_eval(self, node->nd_iter);
+                }
+                else {
+                    VALUE recv;
 
-		    _block.flags &= ~BLOCK_D_SCOPE;
-		    BEGIN_CALLARGS;
-		    recv = rb_eval(self, node->nd_iter);
-		    END_CALLARGS;
-		    ruby_current_node = node;
-		    SET_CURRENT_SOURCE();
-		    result = rb_call(CLASS_OF(recv),recv,each,0,0,0,self);
-		}
-		POP_ITER();
-	    }
-	    else if (state == TAG_BREAK && TAG_DST()) {
-		result = prot_tag->retval;
-		state = 0;
-	    }
-	    else if (state == TAG_RETRY) {
-		state = 0;
-		goto iter_retry;
-	    }
-	    POP_BLOCK();
-	    POP_TAG();
-	    switch (state) {
-	      case 0:
-		break;
-	      default:
-		JUMP_TAG(state);
-	    }
-	}
-	break;
+                    _block.flags &= ~BLOCK_D_SCOPE;
+                    BEGIN_CALLARGS;
+                    recv = rb_eval(self, node->nd_iter);
+                    END_CALLARGS;
+                    ruby_current_node = node;
+                    SET_CURRENT_SOURCE();
+                    result = rb_call(CLASS_OF(recv),recv,each,0,0,0,self);
+                }
+                POP_ITER();
+            }
+            else if (state == TAG_BREAK && TAG_DST()) {
+                result = prot_tag->retval;
+                state = 0;
+            }
+            else if (state == TAG_RETRY) {
+                state = 0;
+                goto iter_retry;
+            }
+            POP_BLOCK();
+            POP_TAG();
+            switch (state) {
+              case 0:
+                break;
+              default:
+                JUMP_TAG(state);
+            }
+        }
+        break;
 
       case NODE_BREAK:
       break_jump(rb_eval(self, node->nd_stts));
@@ -3185,74 +3185,74 @@ rb_eval(VALUE self, NODE *n)
       break;
 
       case NODE_RESCUE:
-	{
-	    volatile VALUE e_info = ruby_errinfo;
-	    volatile int rescuing = 0;
+        {
+            volatile VALUE e_info = ruby_errinfo;
+            volatile int rescuing = 0;
 
-	    PUSH_TAG(PROT_NONE);
-	    if ((state = EXEC_TAG()) == 0) {
-	      retry_entry:
-		result = rb_eval(self, node->nd_head);
-	    }
-	    else if (rescuing) {
-		if (rescuing < 0) {
-		    /* in rescue argument, just reraise */
-		}
-		else if (state == TAG_RETRY) {
-		    rescuing = state = 0;
-		    ruby_errinfo = e_info;
-		    goto retry_entry;
-		}
-		else if (state != TAG_RAISE) {
-		    result = prot_tag->retval;
-		}
-	    }
-	    else if (state == TAG_RAISE) {
-		NODE *resq = node->nd_resq;
+            PUSH_TAG(PROT_NONE);
+            if ((state = EXEC_TAG()) == 0) {
+              retry_entry:
+                result = rb_eval(self, node->nd_head);
+            }
+            else if (rescuing) {
+                if (rescuing < 0) {
+                    /* in rescue argument, just reraise */
+                }
+                else if (state == TAG_RETRY) {
+                    rescuing = state = 0;
+                    ruby_errinfo = e_info;
+                    goto retry_entry;
+                }
+                else if (state != TAG_RAISE) {
+                    result = prot_tag->retval;
+                }
+            }
+            else if (state == TAG_RAISE) {
+                NODE *resq = node->nd_resq;
 
-		rescuing = -1;
-		while (resq) {
-		    ruby_current_node = resq;
-		    if (handle_rescue(self, resq)) {
-			state = 0;
-			rescuing = 1;
-			result = rb_eval(self, resq->nd_body);
-			break;
-		    }
-		    resq = resq->nd_head; /* next rescue */
-		}
-	    }
-	    else {
-		result = prot_tag->retval;
-	    }
-	    POP_TAG();
-	    if (state != TAG_RAISE) ruby_errinfo = e_info;
-	    if (state) {
-		JUMP_TAG(state);
-	    }
-	    /* no exception raised */
-	    if (!rescuing && (node = node->nd_else)) { /* else clause given */
-		goto again;
-	    }
-	}
-	break;
+                rescuing = -1;
+                while (resq) {
+                    ruby_current_node = resq;
+                    if (handle_rescue(self, resq)) {
+                        state = 0;
+                        rescuing = 1;
+                        result = rb_eval(self, resq->nd_body);
+                        break;
+                    }
+                    resq = resq->nd_head; /* next rescue */
+                }
+            }
+            else {
+                result = prot_tag->retval;
+            }
+            POP_TAG();
+            if (state != TAG_RAISE) ruby_errinfo = e_info;
+            if (state) {
+                JUMP_TAG(state);
+            }
+            /* no exception raised */
+            if (!rescuing && (node = node->nd_else)) { /* else clause given */
+                goto again;
+            }
+        }
+        break;
 
       case NODE_ENSURE:
-	PUSH_TAG(PROT_NONE);
-	if ((state = EXEC_TAG()) == 0) {
-	    result = rb_eval(self, node->nd_head);
-	}
-	POP_TAG();
-	if (node->nd_ensr && !thread_no_ensure()) {
-	    VALUE retval = prot_tag->retval; /* save retval */
-	    VALUE errinfo = ruby_errinfo;
+        PUSH_TAG(PROT_NONE);
+        if ((state = EXEC_TAG()) == 0) {
+            result = rb_eval(self, node->nd_head);
+        }
+        POP_TAG();
+        if (node->nd_ensr && !thread_no_ensure()) {
+            VALUE retval = prot_tag->retval; /* save retval */
+            VALUE errinfo = ruby_errinfo;
 
-	    rb_eval(self, node->nd_ensr);
-	    return_value(retval);
-	    ruby_errinfo = errinfo;
-	}
-	if (state) JUMP_TAG(state);
-	break;
+            rb_eval(self, node->nd_ensr);
+            return_value(retval);
+            ruby_errinfo = errinfo;
+        }
+        if (state) JUMP_TAG(state);
+        break;
 
       case NODE_AND:
       result = rb_eval(self, node->nd_1st);
@@ -3447,42 +3447,42 @@ rb_eval(VALUE self, NODE *n)
       break;
 
       case NODE_SCOPE:
-	{
-	    struct FRAME frame;
-	    NODE *saved_cref = 0;
+        {
+            struct FRAME frame;
+            NODE *saved_cref = 0;
 
-	    frame = *ruby_frame;
-	    frame.tmp = ruby_frame;
-	    ruby_frame = &frame;
+            frame = *ruby_frame;
+            frame.tmp = ruby_frame;
+            ruby_frame = &frame;
 
-	    PUSH_SCOPE();
-	    PUSH_TAG(PROT_NONE);
-	    if (node->nd_rval) {
-		saved_cref = ruby_cref;
-		ruby_cref = (NODE*)node->nd_rval;
-	    }
-	    if (node->nd_tbl) {
-		VALUE *vars = ALLOCA_N(VALUE, node->nd_tbl[0]+1);
-		*vars++ = (VALUE)node;
-		ruby_scope->local_vars = vars;
-		rb_mem_clear(ruby_scope->local_vars, node->nd_tbl[0]);
-		ruby_scope->local_tbl = node->nd_tbl;
-	    }
-	    else {
-		ruby_scope->local_vars = 0;
-		ruby_scope->local_tbl  = 0;
-	    }
-	    if ((state = EXEC_TAG()) == 0) {
-		result = rb_eval(self, node->nd_next);
-	    }
-	    POP_TAG();
-	    POP_SCOPE();
-	    ruby_frame = frame.tmp;
-	    if (saved_cref)
-		ruby_cref = saved_cref;
-	    if (state) JUMP_TAG(state);
-	}
-	break;
+            PUSH_SCOPE();
+            PUSH_TAG(PROT_NONE);
+            if (node->nd_rval) {
+                saved_cref = ruby_cref;
+                ruby_cref = (NODE*)node->nd_rval;
+            }
+            if (node->nd_tbl) {
+                VALUE *vars = ALLOCA_N(VALUE, node->nd_tbl[0]+1);
+                *vars++ = (VALUE)node;
+                ruby_scope->local_vars = vars;
+                rb_mem_clear(ruby_scope->local_vars, node->nd_tbl[0]);
+                ruby_scope->local_tbl = node->nd_tbl;
+            }
+            else {
+                ruby_scope->local_vars = 0;
+                ruby_scope->local_tbl  = 0;
+            }
+            if ((state = EXEC_TAG()) == 0) {
+                result = rb_eval(self, node->nd_next);
+            }
+            POP_TAG();
+            POP_SCOPE();
+            ruby_frame = frame.tmp;
+            if (saved_cref)
+                ruby_cref = saved_cref;
+            if (state) JUMP_TAG(state);
+        }
+        break;
 
       case NODE_OP_ASGN1:
       {
@@ -4082,9 +4082,9 @@ module_setup(VALUE module, NODE *n)
     PUSH_CREF(module);
     PUSH_TAG(PROT_NONE);
     if ((state = EXEC_TAG()) == 0) {
-	EXEC_EVENT_HOOK(RUBY_EVENT_CLASS, n, ruby_cbase,
-			ruby_frame->last_func, ruby_frame->last_class);
-	result = rb_eval(ruby_cbase, node->nd_next);
+        EXEC_EVENT_HOOK(RUBY_EVENT_CLASS, n, ruby_cbase,
+                        ruby_frame->last_func, ruby_frame->last_class);
+        result = rb_eval(ruby_cbase, node->nd_next);
     }
     POP_TAG();
     POP_CREF();
@@ -4458,26 +4458,26 @@ rb_longjmp(int tag, VALUE mesg)
     }
 
     if (RTEST(ruby_debug) && !NIL_P(ruby_errinfo)
-	&& !rb_obj_is_kind_of(ruby_errinfo, rb_eSystemExit)) {
-	VALUE e = ruby_errinfo;
-	int status;
+        && !rb_obj_is_kind_of(ruby_errinfo, rb_eSystemExit)) {
+        VALUE e = ruby_errinfo;
+        int status;
 
-	PUSH_TAG(PROT_NONE);
-	if ((status = EXEC_TAG()) == 0) {
-	    StringValue(e);
-	    warn_printf("Exception `%s' at %s:%d - %s\n",
-			rb_obj_classname(ruby_errinfo),
-			ruby_sourcefile, ruby_sourceline,
-			RSTRING(e)->ptr);
-	}
-	POP_TAG();
-	if (status == TAG_FATAL && ruby_errinfo == exception_error) {
-	    ruby_errinfo = mesg;
-	}
-	else if (status) {
-	    thread_reset_raised();
-	    JUMP_TAG(status);
-	}
+        PUSH_TAG(PROT_NONE);
+        if ((status = EXEC_TAG()) == 0) {
+            StringValue(e);
+            warn_printf("Exception `%s' at %s:%d - %s\n",
+                        rb_obj_classname(ruby_errinfo),
+                        ruby_sourcefile, ruby_sourceline,
+                        RSTRING(e)->ptr);
+        }
+        POP_TAG();
+        if (status == TAG_FATAL && ruby_errinfo == exception_error) {
+            ruby_errinfo = mesg;
+        }
+        else if (status) {
+            thread_reset_raised();
+            JUMP_TAG(status);
+        }
     }
 
     rb_trap_restore_mask();
@@ -4812,71 +4812,71 @@ rb_yield_0(VALUE val, VALUE self, VALUE klass, int flags, int avalue)
     var = block->var;
 
     if (var) {
-	PUSH_TAG(PROT_NONE);
-	if ((state = EXEC_TAG()) == 0) {
-	    NODE *bvar = NULL;
-	  block_var:
-	    if (var == (NODE*)1) { /* no parameter || */
-		if (lambda && RARRAY(val)->len != 0) {
-		    rb_raise(rb_eArgError, "wrong number of arguments (%ld for 0)",
-			     RARRAY(val)->len);
-		}
-	    }
-	    else if (var == (NODE*)2) {
-		if (TYPE(val) == T_ARRAY && RARRAY(val)->len != 0) {
-		    rb_raise(rb_eArgError, "wrong number of arguments (%ld for 0)",
-			     RARRAY(val)->len);
-		}
-	    }
-	    else if (!bvar && nd_type(var) == NODE_BLOCK_PASS) {
-		bvar = var->nd_body;
-		var = var->nd_args;
-		goto block_var;
-	    }
-	    else if (nd_type(var) == NODE_MASGN) {
-		if (!avalue) {
-		    val = svalue_to_mrhs(val, var->nd_head);
-		}
-		massign(self, var, val, lambda);
-	    }
-	    else {
-		int len = 0;
-		if (avalue) {
-		    len = RARRAY(val)->len;
-		    if (len == 0) {
-			goto zero_arg;
-		    }
-		    if (len == 1) {
-			val = RARRAY(val)->ptr[0];
-		    }
-		    else {
-			goto multi_values;
-		    }
-		}
-		else if (val == Qundef) {
-		  zero_arg:
-		    val = Qnil;
-		  multi_values:
-		    {
-			ruby_current_node = var;
-			rb_warn("multiple values for a block parameter (%d for 1)\n\tfrom %s:%d",
-				len, cnode->nd_file, nd_line(cnode));
-			ruby_current_node = cnode;
-		    }
-		}
-		assign(self, var, val, lambda);
-	    }
-	    if (bvar) {
-		VALUE blk;
-		if (flags & YIELD_PROC_CALL)
-		    blk = block->block_obj;
-		else
-		    blk = rb_block_proc();
-		assign(self, bvar, blk, 0);
-	    }
-	}
-	POP_TAG();
-	if (state) goto pop_state;
+        PUSH_TAG(PROT_NONE);
+        if ((state = EXEC_TAG()) == 0) {
+            NODE *bvar = NULL;
+          block_var:
+            if (var == (NODE*)1) { /* no parameter || */
+                if (lambda && RARRAY(val)->len != 0) {
+                    rb_raise(rb_eArgError, "wrong number of arguments (%ld for 0)",
+                             RARRAY(val)->len);
+                }
+            }
+            else if (var == (NODE*)2) {
+                if (TYPE(val) == T_ARRAY && RARRAY(val)->len != 0) {
+                    rb_raise(rb_eArgError, "wrong number of arguments (%ld for 0)",
+                             RARRAY(val)->len);
+                }
+            }
+            else if (!bvar && nd_type(var) == NODE_BLOCK_PASS) {
+                bvar = var->nd_body;
+                var = var->nd_args;
+                goto block_var;
+            }
+            else if (nd_type(var) == NODE_MASGN) {
+                if (!avalue) {
+                    val = svalue_to_mrhs(val, var->nd_head);
+                }
+                massign(self, var, val, lambda);
+            }
+            else {
+                int len = 0;
+                if (avalue) {
+                    len = RARRAY(val)->len;
+                    if (len == 0) {
+                        goto zero_arg;
+                    }
+                    if (len == 1) {
+                        val = RARRAY(val)->ptr[0];
+                    }
+                    else {
+                        goto multi_values;
+                    }
+                }
+                else if (val == Qundef) {
+                  zero_arg:
+                    val = Qnil;
+                  multi_values:
+                    {
+                        ruby_current_node = var;
+                        rb_warn("multiple values for a block parameter (%d for 1)\n\tfrom %s:%d",
+                                len, cnode->nd_file, nd_line(cnode));
+                        ruby_current_node = cnode;
+                    }
+                }
+                assign(self, var, val, lambda);
+            }
+            if (bvar) {
+                VALUE blk;
+                if (flags & YIELD_PROC_CALL)
+                    blk = block->block_obj;
+                else
+                    blk = rb_block_proc();
+                assign(self, bvar, blk, 0);
+            }
+        }
+        POP_TAG();
+        if (state) goto pop_state;
     }
     if (!node) {
       state = 0;
@@ -4888,54 +4888,54 @@ rb_yield_0(VALUE val, VALUE self, VALUE klass, int flags, int avalue)
     PUSH_TAG(lambda ? PROT_NONE : PROT_YIELD);
     if ((state = EXEC_TAG()) == 0) {
       redo:
-	if (nd_type(node) == NODE_CFUNC || nd_type(node) == NODE_IFUNC) {
-	    switch (node->nd_state) {
-	      case YIELD_FUNC_LAMBDA:
-		if (!avalue) {
-		    val = rb_ary_new3(1, val);
-		}
-		break;
-	      case YIELD_FUNC_AVALUE:
-		if (!avalue) {
-		    val = svalue_to_avalue(val);
-		}
-		break;
-	      default:
-		if (avalue) {
-		    val = avalue_to_svalue(val);
-		}
-		if (val == Qundef && node->nd_state != YIELD_FUNC_SVALUE)
-		    val = Qnil;
-	    }
-	    result = (*node->nd_cfnc)(val, node->nd_tval, self);
-	}
-	else {
-	    result = rb_eval(self, node);
-	}
+        if (nd_type(node) == NODE_CFUNC || nd_type(node) == NODE_IFUNC) {
+            switch (node->nd_state) {
+              case YIELD_FUNC_LAMBDA:
+                if (!avalue) {
+                    val = rb_ary_new3(1, val);
+                }
+                break;
+              case YIELD_FUNC_AVALUE:
+                if (!avalue) {
+                    val = svalue_to_avalue(val);
+                }
+                break;
+              default:
+                if (avalue) {
+                    val = avalue_to_svalue(val);
+                }
+                if (val == Qundef && node->nd_state != YIELD_FUNC_SVALUE)
+                    val = Qnil;
+            }
+            result = (*node->nd_cfnc)(val, node->nd_tval, self);
+        }
+        else {
+            result = rb_eval(self, node);
+        }
     }
     else {
-	switch (state) {
-	  case TAG_REDO:
-	    state = 0;
-	    CHECK_INTS;
-	    goto redo;
-	  case TAG_NEXT:
-	    if (!lambda) {
-		state = 0;
-		result = prot_tag->retval;
-	    }
-	    break;
-	  case TAG_BREAK:
-	    if (TAG_DST()) {
-		result = prot_tag->retval;
-	    }
-	    else {
-		lambda = Qtrue;	/* just pass TAG_BREAK */
-	    }
-	    break;
-	  default:
-	    break;
-	}
+        switch (state) {
+          case TAG_REDO:
+            state = 0;
+            CHECK_INTS;
+            goto redo;
+          case TAG_NEXT:
+            if (!lambda) {
+                state = 0;
+                result = prot_tag->retval;
+            }
+            break;
+          case TAG_BREAK:
+            if (TAG_DST()) {
+                result = prot_tag->retval;
+            }
+            else {
+                lambda = Qtrue;        /* just pass TAG_BREAK */
+            }
+            break;
+          default:
+            break;
+        }
     }
     POP_TAG();
     POP_ITER();
@@ -5220,15 +5220,15 @@ rb_iterate _((VALUE(*it_proc)(VALUE),VALUE data1,VALUE(*bl_proc)(ANYARGS),VALUE 
     state = EXEC_TAG();
     if (state == 0) {
   iter_retry:
-	retval = (*it_proc)(data1);
+        retval = (*it_proc)(data1);
     }
     else if (state == TAG_BREAK && TAG_DST()) {
-	retval = prot_tag->retval;
-	state = 0;
+        retval = prot_tag->retval;
+        state = 0;
     }
     else if (state == TAG_RETRY) {
-	state = 0;
-	goto iter_retry;
+        state = 0;
+        goto iter_retry;
     }
     POP_ITER();
     POP_BLOCK();
@@ -5295,27 +5295,27 @@ rb_rescue2(b_proc, data1, r_proc, data2, va_alist)
         result = (*b_proc)(data1);
         break;
       case TAG_RAISE:
-	if (handle) break;
-	handle = Qfalse;
-	va_init_list(args, data2);
-	while ((eclass = va_arg(args, VALUE)) != 0) {
-	    if (rb_obj_is_kind_of(ruby_errinfo, eclass)) {
-		handle = Qtrue;
-		break;
-	    }
-	}
-	va_end(args);
+        if (handle) break;
+        handle = Qfalse;
+        va_init_list(args, data2);
+        while ((eclass = va_arg(args, VALUE)) != 0) {
+            if (rb_obj_is_kind_of(ruby_errinfo, eclass)) {
+                handle = Qtrue;
+                break;
+            }
+        }
+        va_end(args);
 
-	if (handle) {
-	    state = 0;
-	    if (r_proc) {
-		result = (*r_proc)(data2, ruby_errinfo);
-	    }
-	    else {
-		result = Qnil;
-	    }
-	    ruby_errinfo = e_info;
-	}
+        if (handle) {
+            state = 0;
+            if (r_proc) {
+                result = (*r_proc)(data2, ruby_errinfo);
+            }
+            else {
+                result = Qnil;
+            }
+            ruby_errinfo = e_info;
+        }
     }
     POP_TAG();
     if (state) JUMP_TAG(state);
@@ -5340,7 +5340,7 @@ rb_protect(VALUE (*proc) _((VALUE)), VALUE data, int *state)
     PUSH_TAG(PROT_NONE);
     cont_protect = (VALUE)rb_node_newnode(NODE_MEMO, cont_protect, 0, 0);
     if ((status = EXEC_TAG()) == 0) {
-	result = (*proc)(data);
+        result = (*proc)(data);
     }
     cont_protect = ((NODE *)cont_protect)->u1.value;
     POP_TAG();
@@ -5363,7 +5363,7 @@ rb_ensure _((VALUE(*b_proc)(ANYARGS),VALUE data1,VALUE(*e_proc)(ANYARGS),VALUE d
 
     PUSH_TAG(PROT_NONE);
     if ((state = EXEC_TAG()) == 0) {
-	result = (*b_proc)(data1);
+        result = (*b_proc)(data1);
     }
     POP_TAG();
     retval = prot_tag ? prot_tag->retval : Qnil;      /* save retval */
@@ -5383,15 +5383,15 @@ rb_with_disable_interrupt(VALUE (*proc)(ANYARGS), VALUE data)
 
     DEFER_INTS;
     {
-	int thr_critical = rb_thread_critical;
+        int thr_critical = rb_thread_critical;
 
-	rb_thread_critical = Qtrue;
-	PUSH_TAG(PROT_NONE);
-	if ((status = EXEC_TAG()) == 0) {
-	    result = (*proc)(data);
-	}
-	POP_TAG();
-	rb_thread_critical = thr_critical;
+        rb_thread_critical = Qtrue;
+        PUSH_TAG(PROT_NONE);
+        if ((status = EXEC_TAG()) == 0) {
+            result = (*proc)(data);
+        }
+        POP_TAG();
+        rb_thread_critical = thr_critical;
     }
     ENABLE_INTS;
     if (status) JUMP_TAG(status);
@@ -5405,15 +5405,15 @@ stack_check()
     static int overflowing = 0;
 
     if (!overflowing && ruby_stack_check()) {
-	int state;
-	overflowing = 1;
-	PUSH_TAG(PROT_NONE);
-	if ((state = EXEC_TAG()) == 0) {
-	    rb_exc_raise(sysstack_error);
-	}
-	POP_TAG();
-	overflowing = 0;
-	JUMP_TAG(state);
+        int state;
+        overflowing = 1;
+        PUSH_TAG(PROT_NONE);
+        if ((state = EXEC_TAG()) == 0) {
+            rb_exc_raise(sysstack_error);
+        }
+        POP_TAG();
+        overflowing = 0;
+        JUMP_TAG(state);
     }
 }
 
@@ -5678,35 +5678,35 @@ rb_call0(VALUE klass, VALUE recv, ID id, ID oid, int argc, VALUE *argv, NODE * v
 
     switch (nd_type(body)) {
       case NODE_CFUNC:
-	{
-	    int len = body->nd_argc;
+        {
+            int len = body->nd_argc;
 
-	    if (len < -2) {
-		rb_bug("bad argc (%d) specified for `%s(%s)'",
-		       len, rb_class2name(klass), rb_id2name(id));
-	    }
-	    if (event_hooks) {
-		int state;
+            if (len < -2) {
+                rb_bug("bad argc (%d) specified for `%s(%s)'",
+                       len, rb_class2name(klass), rb_id2name(id));
+            }
+            if (event_hooks) {
+                int state;
 
-		EXEC_EVENT_HOOK(RUBY_EVENT_C_CALL, ruby_current_node,
-				recv, id, klass);
-		PUSH_TAG(PROT_FUNC);
-		if ((state = EXEC_TAG()) == 0) {
-		    result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
-		}
-		POP_TAG();
-		ruby_current_node = ruby_frame->node;
-		EXEC_EVENT_HOOK(RUBY_EVENT_C_RETURN, ruby_current_node,
-				recv, id, klass);
-		if (state) JUMP_TAG(state);
-	    }
-	    else {
-		result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
-	    }
-	}
-	break;
+                EXEC_EVENT_HOOK(RUBY_EVENT_C_CALL, ruby_current_node,
+                                recv, id, klass);
+                PUSH_TAG(PROT_FUNC);
+                if ((state = EXEC_TAG()) == 0) {
+                    result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
+                }
+                POP_TAG();
+                ruby_current_node = ruby_frame->node;
+                EXEC_EVENT_HOOK(RUBY_EVENT_C_RETURN, ruby_current_node,
+                                recv, id, klass);
+                if (state) JUMP_TAG(state);
+            }
+            else {
+                result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
+            }
+        }
+        break;
 
-	/* for attr get/set */
+        /* for attr get/set */
       case NODE_IVAR:
       if (argc != 0) {
           rb_raise(rb_eArgError, "wrong number of arguments (%d for 0)", argc);
@@ -5742,149 +5742,149 @@ rb_call0(VALUE klass, VALUE recv, ID id, ID oid, int argc, VALUE *argv, NODE * v
       break;
 
       case NODE_SCOPE:
-	{
-	    int state;
-	    VALUE *local_vars;	/* OK */
-	    NODE *saved_cref = 0;
+        {
+            int state;
+            VALUE *local_vars;        /* OK */
+            NODE *saved_cref = 0;
 
-	    PUSH_SCOPE();
-	    if (body->nd_rval) {
-		saved_cref = ruby_cref;
-		ruby_cref = (NODE*)body->nd_rval;
-	    }
-	    PUSH_CLASS(ruby_cbase);
-	    if (body->nd_tbl) {
-		local_vars = TMP_ALLOC(body->nd_tbl[0]+1);
-		*local_vars++ = (VALUE)body;
-		rb_mem_clear(local_vars, body->nd_tbl[0]);
-		ruby_scope->local_tbl = body->nd_tbl;
-		ruby_scope->local_vars = local_vars;
-	    }
-	    else {
-		local_vars = ruby_scope->local_vars = 0;
-		ruby_scope->local_tbl  = 0;
-	    }
-	    b2 = body = body->nd_next;
+            PUSH_SCOPE();
+            if (body->nd_rval) {
+                saved_cref = ruby_cref;
+                ruby_cref = (NODE*)body->nd_rval;
+            }
+            PUSH_CLASS(ruby_cbase);
+            if (body->nd_tbl) {
+                local_vars = TMP_ALLOC(body->nd_tbl[0]+1);
+                *local_vars++ = (VALUE)body;
+                rb_mem_clear(local_vars, body->nd_tbl[0]);
+                ruby_scope->local_tbl = body->nd_tbl;
+                ruby_scope->local_vars = local_vars;
+            }
+            else {
+                local_vars = ruby_scope->local_vars = 0;
+                ruby_scope->local_tbl  = 0;
+            }
+            b2 = body = body->nd_next;
 
-	    if (NOEX_SAFE(flags) > ruby_safe_level) {
-		safe = ruby_safe_level;
-		ruby_safe_level = NOEX_SAFE(flags);
-	    }
-	    PUSH_VARS();
-	    PUSH_TAG(PROT_FUNC);
-	    if ((state = EXEC_TAG()) == 0) {
-		NODE *node = 0;
-		int i, nopt = 0;
+            if (NOEX_SAFE(flags) > ruby_safe_level) {
+                safe = ruby_safe_level;
+                ruby_safe_level = NOEX_SAFE(flags);
+            }
+            PUSH_VARS();
+            PUSH_TAG(PROT_FUNC);
+            if ((state = EXEC_TAG()) == 0) {
+                NODE *node = 0;
+                int i, nopt = 0;
 
-		if (nd_type(body) == NODE_ARGS) {
-		    node = body;
-		    body = 0;
-		}
-		else if (nd_type(body) == NODE_BLOCK) {
-		    node = body->nd_head;
-		    body = body->nd_next;
-		}
-		if (node) {
-		    if (nd_type(node) != NODE_ARGS) {
-			rb_bug("no argument-node");
-		    }
+                if (nd_type(body) == NODE_ARGS) {
+                    node = body;
+                    body = 0;
+                }
+                else if (nd_type(body) == NODE_BLOCK) {
+                    node = body->nd_head;
+                    body = body->nd_next;
+                }
+                if (node) {
+                    if (nd_type(node) != NODE_ARGS) {
+                        rb_bug("no argument-node");
+                    }
 
-		    i = node->nd_cnt;
-		    if (i > argc) {
-			rb_raise(rb_eArgError, "wrong number of arguments (%d for %d)",
-				 argc, i);
-		    }
-		    if (!node->nd_rest) {
-			NODE *optnode = node->nd_opt;
+                    i = node->nd_cnt;
+                    if (i > argc) {
+                        rb_raise(rb_eArgError, "wrong number of arguments (%d for %d)",
+                                 argc, i);
+                    }
+                    if (!node->nd_rest) {
+                        NODE *optnode = node->nd_opt;
 
-			nopt = i;
-			while (optnode) {
-			    nopt++;
-			    optnode = optnode->nd_next;
-			}
-			if (nopt < argc) {
-			    rb_raise(rb_eArgError,
-				     "wrong number of arguments (%d for %d)",
-				     argc, nopt);
-			}
-		    }
-		    if (local_vars) {
-			if (i > 0) {
-			    /* +2 for $_ and $~ */
-			    MEMCPY(local_vars+2, argv, VALUE, i);
-			}
-		    }
-		    argv += i; argc -= i;
-		    if (node->nd_opt) {
-			NODE *opt = node->nd_opt;
+                        nopt = i;
+                        while (optnode) {
+                            nopt++;
+                            optnode = optnode->nd_next;
+                        }
+                        if (nopt < argc) {
+                            rb_raise(rb_eArgError,
+                                     "wrong number of arguments (%d for %d)",
+                                     argc, nopt);
+                        }
+                    }
+                    if (local_vars) {
+                        if (i > 0) {
+                            /* +2 for $_ and $~ */
+                            MEMCPY(local_vars+2, argv, VALUE, i);
+                        }
+                    }
+                    argv += i; argc -= i;
+                    if (node->nd_opt) {
+                        NODE *opt = node->nd_opt;
 
-			while (opt && argc) {
-			    assign(recv, opt->nd_head, *argv, 1);
-			    argv++; argc--;
-			    ++i;
-			    opt = opt->nd_next;
-			}
-			if (opt) {
-			    rb_eval(recv, opt);
-			    while (opt) {
-				opt = opt->nd_next;
-				++i;
-			    }
-			}
-		    }
-		    if (!node->nd_rest) {
-			i = nopt;
-		    }
-		    else {
-			VALUE v;
-			
-			if (argc > 0) {
-			    v = rb_ary_new4(argc,argv);
-			    i = -i - 1;
-			}
-			else {
-			    v = rb_ary_new2(0);
-			}
-			assign(recv, node->nd_rest, v, 1);
-		    }
-		    ruby_frame->argc = i;
-		}
-		if (event_hooks) {
-		    EXEC_EVENT_HOOK(RUBY_EVENT_CALL, b2, recv, id, klass);
-		}
-		result = rb_eval(recv, body);
-	    }
-	    else if (state == TAG_RETURN && TAG_DST()) {
-		result = prot_tag->retval;
-		state = 0;
-	    }
-	    POP_TAG();
-	    if (event_hooks) {
-		EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, ruby_current_node, recv, id, klass);
-	    }
-	    POP_VARS();
-	    POP_CLASS();
-	    POP_SCOPE();
-	    ruby_cref = saved_cref;
-	    if (safe >= 0) ruby_safe_level = safe;
-	    switch (state) {
-	      case 0:
-		break;
+                        while (opt && argc) {
+                            assign(recv, opt->nd_head, *argv, 1);
+                            argv++; argc--;
+                            ++i;
+                            opt = opt->nd_next;
+                        }
+                        if (opt) {
+                            rb_eval(recv, opt);
+                            while (opt) {
+                                opt = opt->nd_next;
+                                ++i;
+                            }
+                        }
+                    }
+                    if (!node->nd_rest) {
+                        i = nopt;
+                    }
+                    else {
+                        VALUE v;
+                        
+                        if (argc > 0) {
+                            v = rb_ary_new4(argc,argv);
+                            i = -i - 1;
+                        }
+                        else {
+                            v = rb_ary_new2(0);
+                        }
+                        assign(recv, node->nd_rest, v, 1);
+                    }
+                    ruby_frame->argc = i;
+                }
+                if (event_hooks) {
+                    EXEC_EVENT_HOOK(RUBY_EVENT_CALL, b2, recv, id, klass);
+                }
+                result = rb_eval(recv, body);
+            }
+            else if (state == TAG_RETURN && TAG_DST()) {
+                result = prot_tag->retval;
+                state = 0;
+            }
+            POP_TAG();
+            if (event_hooks) {
+                EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, ruby_current_node, recv, id, klass);
+            }
+            POP_VARS();
+            POP_CLASS();
+            POP_SCOPE();
+            ruby_cref = saved_cref;
+            if (safe >= 0) ruby_safe_level = safe;
+            switch (state) {
+              case 0:
+                break;
 
-	      case TAG_BREAK:
-	      case TAG_RETURN:
-		JUMP_TAG(state);
-		break;
+              case TAG_BREAK:
+              case TAG_RETURN:
+                JUMP_TAG(state);
+                break;
 
-	      case TAG_RETRY:
-		if (rb_block_given_p()) JUMP_TAG(state);
-		/* fall through */
-	      default:
-		jump_tag_but_local_jump(state, result);
-		break;
-	    }
-	}
-	break;
+              case TAG_RETRY:
+                if (rb_block_given_p()) JUMP_TAG(state);
+                /* fall through */
+              default:
+                jump_tag_but_local_jump(state, result);
+                break;
+            }
+        }
+        break;
 
       default:
       unknown_node(body);
@@ -6048,7 +6048,7 @@ rb_funcall_rescue(recv, mid, n, va_alist)
 
     PUSH_TAG(PROT_NONE);
     if ((status = EXEC_TAG()) == 0) {
-	result = vafuncall(recv, mid, n, &ar);
+        result = vafuncall(recv, mid, n, &ar);
     }
     POP_TAG();
     switch (status) {
@@ -6304,18 +6304,18 @@ eval(VALUE self, VALUE src, VALUE scope, const char *file, int line)
     }
     PUSH_TAG(PROT_NONE);
     if ((state = EXEC_TAG()) == 0) {
-	NODE *node;
+        NODE *node;
 
-	ruby_safe_level = 0;
-	result = ruby_errinfo;
-	ruby_errinfo = Qnil;
-	node = compile(src, file, line);
-	ruby_safe_level = safe;
-	if (ruby_nerrs > 0) {
-	    compile_error(0);
-	}
-	if (!NIL_P(result)) ruby_errinfo = result;
-	result = eval_node(self, node);
+        ruby_safe_level = 0;
+        result = ruby_errinfo;
+        ruby_errinfo = Qnil;
+        node = compile(src, file, line);
+        ruby_safe_level = safe;
+        if (ruby_nerrs > 0) {
+            compile_error(0);
+        }
+        if (!NIL_P(result)) ruby_errinfo = result;
+        result = eval_node(self, node);
     }
     POP_TAG();
     POP_CLASS();
@@ -6457,7 +6457,7 @@ exec_under(VALUE (*func)(...), VALUE under, VALUE cbase, VALUE *args)
     SCOPE_SET(SCOPE_PUBLIC);
     PUSH_TAG(PROT_NONE);
     if ((state = EXEC_TAG()) == 0) {
-	val = (*func)(args);
+        val = (*func)(args);
     }
     POP_TAG();
     if (cbase) POP_CREF();
@@ -6747,33 +6747,33 @@ rb_load(VALUE fname, int wrap)
     last_func = ruby_frame->last_func;
     last_node = ruby_current_node;
     if (!ruby_current_node && ruby_sourcefile) {
-	last_node = NEW_NEWLINE(0);
+        last_node = NEW_NEWLINE(0);
     }
     ruby_current_node = 0;
     if (state == 0) {
-	NODE *node;
-	volatile int critical;
+        NODE *node;
+        volatile int critical;
 
-	DEFER_INTS;
-	ruby_in_eval++;
-	critical = rb_thread_critical;
-	rb_thread_critical = Qtrue;
-	rb_load_file(RSTRING(fname)->ptr);
-	ruby_in_eval--;
-	node = ruby_eval_tree;
-	rb_thread_critical = critical;
-	ALLOW_INTS;
-	if (ruby_nerrs == 0) {
-	    eval_node(self, node);
-	}
+        DEFER_INTS;
+        ruby_in_eval++;
+        critical = rb_thread_critical;
+        rb_thread_critical = Qtrue;
+        rb_load_file(RSTRING(fname)->ptr);
+        ruby_in_eval--;
+        node = ruby_eval_tree;
+        rb_thread_critical = critical;
+        ALLOW_INTS;
+        if (ruby_nerrs == 0) {
+            eval_node(self, node);
+        }
     }
     ruby_frame->last_func = last_func;
     ruby_current_node = last_node;
     ruby_sourcefile = 0;
     ruby_set_current_source();
     if (ruby_scope->flags == SCOPE_ALLOCA && ruby_class == rb_cObject) {
-	if (ruby_scope->local_tbl) /* toplevel was empty */
-	    free(ruby_scope->local_tbl);
+        if (ruby_scope->local_tbl) /* toplevel was empty */
+            free(ruby_scope->local_tbl);
     }
     POP_TAG();
     rb_prohibit_interrupt = prohibit_int;
@@ -6800,7 +6800,7 @@ rb_load_protect(VALUE fname, int wrap, int *state)
 
     PUSH_TAG(PROT_NONE);
     if ((status = EXEC_TAG()) == 0) {
-	rb_load(fname, wrap);
+        rb_load(fname, wrap);
     }
     POP_TAG();
     if (state) *state = status;
@@ -7091,37 +7091,37 @@ rb_require_safe(VALUE fname, int safe)
     saved.safe = ruby_safe_level;
     PUSH_TAG(PROT_NONE);
     if ((state = EXEC_TAG()) == 0) {
-	VALUE feature, path;
-	long handle;
-	int found;
+        VALUE feature, path;
+        long handle;
+        int found;
 
-	ruby_safe_level = safe;
-	found = search_required(fname, &feature, &path);
-	if (found) {
-	    if (!path || !(ftptr = load_lock(RSTRING_PTR(feature)))) {
-		result = Qfalse;
-	    }
-	    else {
-		ruby_safe_level = 0;
-		switch (found) {
-		  case 'r':
-		    rb_load(path, 0);
-		    break;
+        ruby_safe_level = safe;
+        found = search_required(fname, &feature, &path);
+        if (found) {
+            if (!path || !(ftptr = load_lock(RSTRING_PTR(feature)))) {
+                result = Qfalse;
+            }
+            else {
+                ruby_safe_level = 0;
+                switch (found) {
+                  case 'r':
+                    rb_load(path, 0);
+                    break;
 
-		  case 's':
-		    ruby_current_node = 0;
-		    ruby_sourcefile = rb_source_filename(RSTRING(path)->ptr);
-		    ruby_sourceline = 0;
-		    ruby_frame->last_func = 0;
-		    SCOPE_SET(SCOPE_PUBLIC);
-		    handle = (long)dln_load(RSTRING(path)->ptr);
-		    rb_ary_push(ruby_dln_librefs, LONG2NUM(handle));
-		    break;
-		}
-		rb_provide_feature(feature);
-		result = Qtrue;
-	    }
-	}
+                  case 's':
+                    ruby_current_node = 0;
+                    ruby_sourcefile = rb_source_filename(RSTRING(path)->ptr);
+                    ruby_sourceline = 0;
+                    ruby_frame->last_func = 0;
+                    SCOPE_SET(SCOPE_PUBLIC);
+                    handle = (long)dln_load(RSTRING(path)->ptr);
+                    rb_ary_push(ruby_dln_librefs, LONG2NUM(handle));
+                    break;
+                }
+                rb_provide_feature(feature);
+                result = Qtrue;
+            }
+        }
     }
     POP_TAG();
     ruby_current_node = saved.node;
@@ -7736,40 +7736,40 @@ rb_exec_end_proc()
     volatile int safe = ruby_safe_level;
 
     while (ephemeral_end_procs) {
-	tmp_end_procs = link = ephemeral_end_procs;
-	ephemeral_end_procs = 0;
-	while (link) {
-	    PUSH_TAG(PROT_NONE);
-	    if ((status = EXEC_TAG()) == 0) {
-		ruby_safe_level = link->safe;
-		(*link->func)(link->data);
-	    }
-	    POP_TAG();
-	    if (status) {
-		error_handle(status);
-	    }
-	    tmp = link;
-	    tmp_end_procs = link = link->next;
-	    free(tmp);
-	}
+        tmp_end_procs = link = ephemeral_end_procs;
+        ephemeral_end_procs = 0;
+        while (link) {
+            PUSH_TAG(PROT_NONE);
+            if ((status = EXEC_TAG()) == 0) {
+                ruby_safe_level = link->safe;
+                ((void (*) _((VALUE)))(*link->func))(link->data);
+            }
+            POP_TAG();
+            if (status) {
+                error_handle(status);
+            }
+            tmp = link;
+            tmp_end_procs = link = link->next;
+            free(tmp);
+        }
     }
     while (end_procs) {
-	tmp_end_procs = link = end_procs;
-	end_procs = 0;
-	while (link) {
-	    PUSH_TAG(PROT_NONE);
-	    if ((status = EXEC_TAG()) == 0) {
-		ruby_safe_level = link->safe;
-		(*link->func)(link->data);
-	    }
-	    POP_TAG();
-	    if (status) {
-		error_handle(status);
-	    }
-	    tmp = link;
-	    tmp_end_procs = link = link->next;
-	    free(tmp);
-	}
+        tmp_end_procs = link = end_procs;
+        end_procs = 0;
+        while (link) {
+            PUSH_TAG(PROT_NONE);
+            if ((status = EXEC_TAG()) == 0) {
+                ruby_safe_level = link->safe;
+                ((void (*) _((VALUE)))(*link->func))(link->data);
+            }
+            POP_TAG();
+            if (status) {
+                error_handle(status);
+            }
+            tmp = link;
+            tmp_end_procs = link = link->next;
+            free(tmp);
+        }
     }
     ruby_safe_level = safe;
 }
@@ -8463,12 +8463,12 @@ proc_invoke(VALUE proc, VALUE args, VALUE self, VALUE klass)
     PUSH_TAG(pcall ? PROT_LAMBDA : PROT_NONE);
     state = EXEC_TAG();
     if (state == 0) {
-	proc_set_safe_level(proc);
-	result = rb_yield_0(args, self, (self!=Qundef)?CLASS_OF(self):0,
-			    pcall | YIELD_PROC_CALL, avalue);
+        proc_set_safe_level(proc);
+        result = rb_yield_0(args, self, (self!=Qundef)?CLASS_OF(self):0,
+                            pcall | YIELD_PROC_CALL, avalue);
     }
     else if (TAG_DST()) {
-	result = prot_tag->retval;
+        result = prot_tag->retval;
     }
     POP_TAG();
     POP_ITER();
@@ -8776,18 +8776,18 @@ block_pass(VALUE self, NODE *node)
     state = EXEC_TAG();
     if (state == 0) {
       retry:
-	proc_set_safe_level(proc);
-	if (safe > ruby_safe_level)
-	    ruby_safe_level = safe;
-	result = rb_eval(self, node->nd_iter);
+        proc_set_safe_level(proc);
+        if (safe > ruby_safe_level)
+            ruby_safe_level = safe;
+        result = rb_eval(self, node->nd_iter);
     }
     else if (state == TAG_BREAK && TAG_DST()) {
-	result = prot_tag->retval;
-	state = 0;
+        result = prot_tag->retval;
+        state = 0;
     }
     else if (state == TAG_RETRY) {
-	state = 0;
-	goto retry;
+        state = 0;
+        goto retry;
     }
     POP_TAG();
     POP_ITER();
@@ -10206,7 +10206,7 @@ rb_thread_switch(int n)
 }
 
 #define THREAD_SAVE_CONTEXT(th) \
-    (rb_thread_switch((rb_thread_save_context(th), ruby_setjmp((th)->context))))
+    (rb_thread_switch((rb_thread_save_context(th), ruby_setjmp(((void)(0)),(th)->context))))
 
 NORETURN(static void rb_thread_restore_context _((rb_thread_t,int)));
 NORETURN(NOINLINE(static void rb_thread_restore_context_0(rb_thread_t,int,void*)));
@@ -11757,15 +11757,15 @@ rb_thread_start_0(VALUE (*fn)(...), void *arg, rb_thread_t th)
 
     PUSH_TAG(PROT_THREAD);
     if ((state = EXEC_TAG()) == 0) {
-	if (THREAD_SAVE_CONTEXT(th) == 0) {
-	    curr_thread = th;
-	    th->result = (*fn)(arg, th);
-	}
-	th = th_save;
+        if (THREAD_SAVE_CONTEXT(th) == 0) {
+            curr_thread = th;
+            th->result = (*fn)(arg, th);
+        }
+        th = th_save;
     }
     else if (TAG_DST()) {
-	th = th_save;
-	th->result = prot_tag->retval;
+        th = th_save;
+        th->result = prot_tag->retval;
     }
     POP_TAG();
     status = th->status;
@@ -12838,19 +12838,19 @@ rb_exec_recursive(VALUE (*func) _((VALUE, VALUE, int)), VALUE obj, VALUE arg)
       return (*func) (obj, arg, Qtrue);
     }
     else {
-	VALUE result = Qundef;
-	int state;
+        VALUE result = Qundef;
+        int state;
 
-	hash = recursive_push(hash, objid);
-	PUSH_TAG(PROT_NONE);
-	if ((state = EXEC_TAG()) == 0) {
-	    result = (*func) (obj, arg, Qfalse);
-	}
-	POP_TAG();
-	recursive_pop(hash, objid);
-	if (state)
-	    JUMP_TAG(state);
-	return result;
+        hash = recursive_push(hash, objid);
+        PUSH_TAG(PROT_NONE);
+        if ((state = EXEC_TAG()) == 0) {
+            result = (*func) (obj, arg, Qfalse);
+        }
+        POP_TAG();
+        recursive_pop(hash, objid);
+        if (state)
+            JUMP_TAG(state);
+        return result;
     }
 }
 
@@ -12986,11 +12986,11 @@ rb_f_catch(VALUE dmy, VALUE tag)
     tag = ID2SYM(rb_to_id(tag));
     PUSH_TAG(tag);
     if ((state = EXEC_TAG()) == 0) {
-	val = rb_yield_0(tag, 0, 0, 0, Qfalse);
+        val = rb_yield_0(tag, 0, 0, 0, Qfalse);
     }
     else if (state == TAG_THROW && tag == prot_tag->dst) {
-	val = prot_tag->retval;
-	state = 0;
+        val = prot_tag->retval;
+        state = 0;
     }
     POP_TAG();
     if (state) JUMP_TAG(state);
