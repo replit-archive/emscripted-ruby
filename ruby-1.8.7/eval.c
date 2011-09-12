@@ -209,6 +209,32 @@ int _setjmp(), _longjmp();
 
 #ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
+#else
+      #undef __NFDBITS
+      #undef __FDMASK
+      #undef FD_ZERO
+      #undef FD_CLR
+      #undef FD_SET
+      #undef FD_ISSET
+
+      #define __NFDBITS (8 * (int) sizeof (long int))
+      #define __FDELT(d)  ((d) / __NFDBITS)
+      #define __FDMASK(d) ((long int) 1 << ((d) % __NFDBITS))
+
+      # define FD_ZERO(set)  \
+        do {                        \
+          unsigned int __i;                   \
+          fd_set *__arr = (set);                  \
+          for (__i = 0; __i < sizeof (fd_set) / sizeof (long int); ++__i)       \
+            __FDS_BITS (__arr)[__i] = 0;                \
+        } while (0)
+
+      #define FD_SET(d, set) \
+        ((void) (__FDS_BITS (set)[__FDELT (d)] |= __FDMASK (d)))
+      #define FD_CLR(d, set) \
+        ((void) (__FDS_BITS (set)[__FDELT (d)] &= ~__FDMASK (d)))
+      #define FD_ISSET(d, set) \
+        ((__FDS_BITS (set)[__FDELT (d)] & __FDMASK (d)) != 0)
 #endif
 
 #include <sys/stat.h>
