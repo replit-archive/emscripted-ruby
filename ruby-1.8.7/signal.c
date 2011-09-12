@@ -175,8 +175,7 @@ static struct signals {
 };
 
 static int
-signm2signo(nm)
-    const char *nm;
+signm2signo(const char *nm)
 {
     struct signals *sigs;
 
@@ -187,8 +186,7 @@ signm2signo(nm)
 }
 
 static const char*
-signo2signm(no)
-    int no;
+signo2signm(int no)
 {
     struct signals *sigs;
 
@@ -199,8 +197,7 @@ signo2signm(no)
 }
 
 const char *
-ruby_signal_name(no)
-    int no;
+ruby_signal_name(int no)
 {
     return signo2signm(no);
 }
@@ -214,10 +211,7 @@ ruby_signal_name(no)
  */
 
 static VALUE
-esignal_init(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
+esignal_init(int argc, VALUE *argv, VALUE self)
 {
     int argnum = 1;
     VALUE sig = Qnil;
@@ -270,10 +264,7 @@ esignal_init(argc, argv, self)
 }
 
 static VALUE
-interrupt_init(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
+interrupt_init(int argc, VALUE *argv, VALUE self)
 {
     VALUE args[2];
 
@@ -284,8 +275,7 @@ interrupt_init(argc, argv, self)
 }
 
 void
-ruby_default_signal(sig)
-    int sig;
+ruby_default_signal(int sig)
 {
 #ifndef MACOS_UNUSE_SIGNAL
     extern rb_pid_t getpid _((void));
@@ -320,9 +310,7 @@ ruby_default_signal(sig)
  */
 
 VALUE
-rb_f_kill(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_kill(int argc, VALUE *argv)
 {
     int negative = 0;
     int sig;
@@ -426,9 +414,7 @@ typedef RETSIGTYPE (*sighandler_t)_((int));
 
 #ifdef POSIX_SIGNAL
 static sighandler_t
-ruby_signal(signum, handler)
-    int signum;
-    sighandler_t handler;
+ruby_signal(int signum, sighandler_t handler)
 {
     struct sigaction sigact, old;
 
@@ -446,18 +432,14 @@ ruby_signal(signum, handler)
 }
 
 void
-posix_signal(signum, handler)
-    int signum;
-    sighandler_t handler;
+posix_signal(int signum, sighandler_t handler)
 {
     ruby_signal(signum, handler);
 }
 
 # ifdef HAVE_NATIVETHREAD
 static sighandler_t
-ruby_nativethread_signal(signum, handler)
-    int signum;
-    sighandler_t handler;
+ruby_nativethread_signal(int signum, sighandler_t handler)
 {
     sighandler_t old;
 
@@ -467,9 +449,7 @@ ruby_nativethread_signal(signum, handler)
 }
 
 void
-posix_nativethread_signal(signum, handler)
-    int signum;
-    sighandler_t handler;
+posix_nativethread_signal(int signum, sighandler_t handler)
 {
     ruby_nativethread_signal(signum, handler);
 }
@@ -480,9 +460,7 @@ posix_nativethread_signal(signum, handler)
 
 # ifdef HAVE_NATIVETHREAD
 static sighandler_t
-ruby_nativethread_signal(signum, handler)
-    int signum;
-    sighandler_t handler;
+ruby_nativethread_signal(int signum, sighandler_t handler)
 {
     sighandler_t old;
 
@@ -495,8 +473,7 @@ ruby_nativethread_signal(signum, handler)
 
 static void signal_exec _((int sig));
 static void
-signal_exec(sig)
-    int sig;
+signal_exec(int sig)
 {
     if (trap_list[sig].cmd == 0) {
 	switch (sig) {
@@ -557,8 +534,7 @@ sigsend_to_ruby_thread(int sig)
 
 static RETSIGTYPE sighandler _((int));
 static RETSIGTYPE
-sighandler(sig)
-    int sig;
+sighandler(int sig)
 {
 #ifdef _WIN32
 #define IN_MAIN_CONTEXT(f, a) (rb_w32_main_context(a, f) ? (void)0 : f(a))
@@ -602,8 +578,7 @@ sighandler(sig)
 #ifdef SIGBUS
 static RETSIGTYPE sigbus _((int));
 static RETSIGTYPE
-sigbus(sig)
-    int sig;
+sigbus(int sig)
 {
 #if defined(HAVE_NATIVETHREAD) && defined(HAVE_NATIVETHREAD_KILL)
     if (!is_ruby_native_thread() && !rb_trap_accept_nativethreads[sig]) {
@@ -619,8 +594,7 @@ sigbus(sig)
 #ifdef SIGSEGV
 static RETSIGTYPE sigsegv _((int));
 static RETSIGTYPE
-sigsegv(sig)
-    int sig;
+sigsegv(int sig)
 {
 #if defined(HAVE_NATIVETHREAD) && defined(HAVE_NATIVETHREAD_KILL)
     if (!is_ruby_native_thread() && !rb_trap_accept_nativethreads[sig]) {
@@ -638,8 +612,7 @@ sigsegv(sig)
 #ifdef SIGPIPE
 static RETSIGTYPE sigpipe _((int));
 static RETSIGTYPE
-sigpipe(sig)
-    int sig;
+sigpipe(int sig)
 {
     /* do nothing */
 }
@@ -693,15 +666,13 @@ static int trap_last_mask;
 
 static RETSIGTYPE sigexit _((int));
 static RETSIGTYPE
-sigexit(sig)
-    int sig;
+sigexit(int sig)
 {
     rb_thread_signal_exit();
 }
 
 static VALUE
-trap(arg)
-    struct trap_arg *arg;
+trap(struct trap_arg *arg)
 {
     sighandler_t func, oldfunc;
     VALUE command, oldcmd;
@@ -836,8 +807,7 @@ trap(arg)
 
 #if USE_TRAP_MASK
 static VALUE
-trap_ensure(arg)
-    struct trap_arg *arg;
+trap_ensure(struct trap_arg *arg)
 {
     /* enable interrupt */
 #ifdef HAVE_SIGPROCMASK
@@ -891,9 +861,7 @@ rb_trap_restore_mask()
  *     Terminating: 27460
  */
 static VALUE
-sig_trap(argc, argv)
-    int argc;
-    VALUE *argv;
+sig_trap(int argc, VALUE *argv)
 {
     struct trap_arg arg;
 
@@ -950,9 +918,7 @@ sig_list()
 }
 
 static void
-install_sighandler(signum, handler)
-    int signum;
-    sighandler_t handler;
+install_sighandler(int signum, sighandler_t handler)
 {
     sighandler_t old;
 
@@ -971,9 +937,7 @@ install_sighandler(signum, handler)
  */
 #ifdef HAVE_NATIVETHREAD
 static void
-install_nativethread_sighandler(signum, handler)
-    int signum;
-    sighandler_t handler;
+install_nativethread_sighandler(int signum, sighandler_t handler)
 {
     sighandler_t old;
     int old_st;
@@ -992,8 +956,7 @@ install_nativethread_sighandler(signum, handler)
 #endif
 
 static void
-init_sigchld(sig)
-    int sig;
+init_sigchld(int sig)
 {
     sighandler_t oldfunc;
 #if USE_TRAP_MASK

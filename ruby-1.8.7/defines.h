@@ -1,3 +1,4 @@
+extern "C" {
 /************************************************
 
   defines.h -
@@ -271,3 +272,4 @@ void rb_ia64_flushrs(void);
 #endif
 
 #endif
+}

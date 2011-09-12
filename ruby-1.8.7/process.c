@@ -196,8 +196,7 @@ static VALUE rb_cProcStatus;
 VALUE rb_last_status = Qnil;
 
 static void
-last_status_set(status, pid)
-    int status, pid;
+last_status_set(int status, int pid)
 {
     rb_last_status = rb_obj_alloc(rb_cProcStatus);
     rb_iv_set(rb_last_status, "status", INT2FIX(status));
@@ -219,8 +218,7 @@ last_status_set(status, pid)
  */
 
 static VALUE
-pst_to_i(st)
-    VALUE st;
+pst_to_i(VALUE st)
 {
     return rb_iv_get(st, "status");
 }
@@ -234,8 +232,7 @@ pst_to_i(st)
  */
 
 static VALUE
-pst_to_s(st)
-    VALUE st;
+pst_to_s(VALUE st)
 {
     return rb_fix2str(pst_to_i(st), 10);
 }
@@ -253,8 +250,7 @@ pst_to_s(st)
  */
 
 static VALUE
-pst_pid(st)
-    VALUE st;
+pst_pid(VALUE st)
 {
     return rb_iv_get(st, "pid");
 }
@@ -268,8 +264,7 @@ pst_pid(st)
  */
 
 static VALUE
-pst_inspect(st)
-    VALUE st;
+pst_inspect(VALUE st)
 {
     VALUE pid;
     int status;
@@ -326,8 +321,7 @@ pst_inspect(st)
  */
 
 static VALUE
-pst_equal(st1, st2)
-    VALUE st1, st2;
+pst_equal(VALUE st1, VALUE st2)
 {
     if (st1 == st2) return Qtrue;
     return rb_equal(pst_to_i(st1), st2);
@@ -347,8 +341,7 @@ pst_equal(st1, st2)
  */
 
 static VALUE
-pst_bitand(st1, st2)
-    VALUE st1, st2;
+pst_bitand(VALUE st1, VALUE st2)
 {
     int status = NUM2INT(st1) & NUM2INT(st2);
 
@@ -369,8 +362,7 @@ pst_bitand(st1, st2)
  */
 
 static VALUE
-pst_rshift(st1, st2)
-    VALUE st1, st2;
+pst_rshift(VALUE st1, VALUE st2)
 {
     int status = NUM2INT(st1) >> NUM2INT(st2);
 
@@ -388,8 +380,7 @@ pst_rshift(st1, st2)
  */
 
 static VALUE
-pst_wifstopped(st)
-    VALUE st;
+pst_wifstopped(VALUE st)
 {
     int status = NUM2INT(st);
 
@@ -409,8 +400,7 @@ pst_wifstopped(st)
  */
 
 static VALUE
-pst_wstopsig(st)
-    VALUE st;
+pst_wstopsig(VALUE st)
 {
     int status = NUM2INT(st);
 
@@ -429,8 +419,7 @@ pst_wstopsig(st)
  */
 
 static VALUE
-pst_wifsignaled(st)
-    VALUE st;
+pst_wifsignaled(VALUE st)
 {
     int status = NUM2INT(st);
 
@@ -451,8 +440,7 @@ pst_wifsignaled(st)
  */
 
 static VALUE
-pst_wtermsig(st)
-    VALUE st;
+pst_wtermsig(VALUE st)
 {
     int status = NUM2INT(st);
 
@@ -472,8 +460,7 @@ pst_wtermsig(st)
  */
 
 static VALUE
-pst_wifexited(st)
-    VALUE st;
+pst_wifexited(VALUE st)
 {
     int status = NUM2INT(st);
 
@@ -504,8 +491,7 @@ pst_wifexited(st)
  */
 
 static VALUE
-pst_wexitstatus(st)
-    VALUE st;
+pst_wexitstatus(VALUE st)
 {
     int status = NUM2INT(st);
 
@@ -524,8 +510,7 @@ pst_wexitstatus(st)
  */
 
 static VALUE
-pst_success_p(st)
-    VALUE st;
+pst_success_p(VALUE st)
 {
     int status = NUM2INT(st);
 
@@ -544,8 +529,7 @@ pst_success_p(st)
  */
 
 static VALUE
-pst_wcoredump(st)
-    VALUE st;
+pst_wcoredump(VALUE st)
 {
 #ifdef WCOREDUMP
     int status = NUM2INT(st);
@@ -565,10 +549,7 @@ static st_table *pid_tbl;
 #endif
 
 int
-rb_waitpid(pid, st, flags)
-    int pid;
-    int *st;
-    int flags;
+rb_waitpid(int pid, int *st, int flags)
 {
     int result;
 #ifndef NO_WAITPID
@@ -642,9 +623,7 @@ struct wait_data {
 };
 
 static int
-wait_each(pid, status, data)
-    int pid, status;
-    struct wait_data *data;
+wait_each(int pid, int status, struct wait_data *data)
 {
     if (data->status != -1) return ST_STOP;
 
@@ -654,9 +633,7 @@ wait_each(pid, status, data)
 }
 
 static int
-waitall_each(pid, status, ary)
-    int pid, status;
-    VALUE ary;
+waitall_each(int pid, int status, VALUE ary)
 {
     last_status_set(status, pid);
     rb_ary_push(ary, rb_assoc_new(INT2NUM(pid), rb_last_status));
@@ -724,9 +701,7 @@ waitall_each(pid, status, ary)
  */
 
 static VALUE
-proc_wait(argc, argv)
-    int argc;
-    VALUE *argv;
+proc_wait(int argc, VALUE *argv)
 {
     VALUE vpid, vflags;
     int pid, flags, status;
@@ -770,9 +745,7 @@ proc_wait(argc, argv)
  */
 
 static VALUE
-proc_wait2(argc, argv)
-    int argc;
-    VALUE *argv;
+proc_wait2(int argc, VALUE *argv)
 {
     VALUE pid = proc_wait(argc, argv);
     if (NIL_P(pid)) return Qnil;
@@ -843,8 +816,7 @@ proc_waitall()
 }
 
 static VALUE
-detach_process_watcher(arg)
-    void *arg;
+detach_process_watcher(void *arg)
 {
     int pid = (int)(VALUE)arg, status;
 
@@ -855,8 +827,7 @@ detach_process_watcher(arg)
 }
 
 VALUE
-rb_detach_process(pid)
-    int pid;
+rb_detach_process(int pid)
 {
     return rb_thread_create(detach_process_watcher, (void*)(VALUE)pid);
 }
@@ -927,11 +898,10 @@ char *strtok();
 #define after_exec()
 #endif
 
-extern char *dln_find_exe();
+extern "C" char *dln_find_exe(const char *fname, const char *path);
 
 static void
-security(str)
-    char *str;
+security(char *str)
 {
     if (rb_env_path_tainted()) {
 	if (rb_safe_level() > 0) {
@@ -941,9 +911,7 @@ security(str)
 }
 
 static int
-proc_exec_v(argv, prog)
-    char **argv;
-    char *prog;
+proc_exec_v(char **argv, char *prog)
 {
     if (!prog)
 	prog = argv[0];
@@ -996,10 +964,7 @@ proc_exec_v(argv, prog)
 }
 
 static int
-proc_exec_n(argc, argv, progv)
-    int argc;
-    VALUE *argv;
-    VALUE progv;
+proc_exec_n(int argc, VALUE *argv, VALUE progv)
 {
     char *prog = 0;
     char **args;
@@ -1021,8 +986,7 @@ proc_exec_n(argc, argv, progv)
 }
 
 int
-rb_proc_exec(str)
-    const char *str;
+rb_proc_exec(const char *str)
 {
     const char *s = str;
     char *ss, *t;
@@ -1085,9 +1049,7 @@ rb_proc_exec(str)
 
 #if defined(__human68k__) || defined(__DJGPP__) || defined(_WIN32)
 static int
-proc_spawn_v(argv, prog)
-    char **argv;
-    char *prog;
+proc_spawn_v(char **argv, char *prog)
 {
     char *extension;
     int status;
@@ -1134,10 +1096,7 @@ proc_spawn_v(argv, prog)
 }
 
 static int
-proc_spawn_n(argc, argv, prog)
-    int argc;
-    VALUE *argv;
-    VALUE prog;
+proc_spawn_n(int argc, VALUE *argv, VALUE prog)
 {
     char **args;
     int i;
@@ -1157,8 +1116,7 @@ proc_spawn_n(argc, argv, prog)
 
 #if !defined(_WIN32)
 static int
-proc_spawn(sv)
-    VALUE sv;
+proc_spawn(VALUE sv)
 {
     char *str;
     char *s, *t;
@@ -1196,11 +1154,7 @@ struct rb_exec_arg {
 };
 
 static void
-proc_prepare_args(e, argc, argv, prog)
-    struct rb_exec_arg *e;
-    int argc;
-    VALUE *argv;
-    VALUE prog;
+proc_prepare_args(struct rb_exec_arg *e, int argc, VALUE *argv, VALUE prog)
 {
     int i;
 
@@ -1220,8 +1174,7 @@ proc_prepare_args(e, argc, argv, prog)
 }
 
 static VALUE
-proc_exec_args(earg)
-    VALUE earg;
+proc_exec_args(VALUE earg)
 {
     struct rb_exec_arg *e = (struct rb_exec_arg *)earg;
     int argc = e->argc;
@@ -1262,9 +1215,7 @@ proc_exec_args(earg)
  */
 
 VALUE
-rb_f_exec(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_exec(int argc, VALUE *argv)
 {
     VALUE prog = 0;
     VALUE tmp;
@@ -1313,8 +1264,7 @@ rb_f_exec(argc, argv)
  */
 
 static VALUE
-rb_f_fork(obj)
-    VALUE obj;
+rb_f_fork(VALUE obj)
 {
 #if !defined(__human68k__) && !defined(_WIN32) && !defined(__MACOS__) && !defined(__EMX__) && !defined(__VMS)
     int pid;
@@ -1365,10 +1315,7 @@ rb_f_fork(obj)
  */
 
 static VALUE
-rb_f_exit_bang(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+rb_f_exit_bang(int argc, VALUE *argv, VALUE obj)
 {
     VALUE status;
     int istatus;
@@ -1400,8 +1347,7 @@ rb_f_exit_bang(argc, argv, obj)
 #endif
 
 void
-rb_syswait(pid)
-    int pid;
+rb_syswait(int pid)
 {
     static int overriding;
 #ifdef SIGHUP
@@ -1462,9 +1408,7 @@ rb_syswait(pid)
  */
 
 static VALUE
-rb_f_system(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_system(int argc, VALUE *argv)
 {
     int status;
 #if defined(__EMX__)
@@ -1609,9 +1553,7 @@ rb_f_system(argc, argv)
  */
 
 static VALUE
-rb_f_sleep(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_sleep(int argc, VALUE *argv)
 {
     int beg, end;
 
@@ -1707,8 +1649,7 @@ proc_setpgrp()
  */
 
 static VALUE
-proc_getpgid(obj, pid)
-    VALUE obj, pid;
+proc_getpgid(VALUE obj, VALUE pid)
 {
 #if defined(HAVE_GETPGID) && !defined(__CHECKER__)
     int i;
@@ -1732,8 +1673,7 @@ proc_getpgid(obj, pid)
  */
 
 static VALUE
-proc_setpgid(obj, pid, pgrp)
-    VALUE obj, pid, pgrp;
+proc_setpgid(VALUE obj, VALUE pid, VALUE pgrp)
 {
 #ifdef HAVE_SETPGID
     int ipid, ipgrp;
@@ -1816,8 +1756,7 @@ proc_setsid()
  */
 
 static VALUE
-proc_getpriority(obj, which, who)
-    VALUE obj, which, who;
+proc_getpriority(VALUE obj, VALUE which, VALUE who)
 {
 #ifdef HAVE_GETPRIORITY
     int prio, iwhich, iwho;
@@ -1849,8 +1788,7 @@ proc_getpriority(obj, which, who)
  */
 
 static VALUE
-proc_setpriority(obj, which, who, prio)
-    VALUE obj, which, who, prio;
+proc_setpriority(VALUE obj, VALUE which, VALUE who, VALUE prio)
 {
 #ifdef HAVE_GETPRIORITY
     int iwhich, iwho, iprio;
@@ -2019,8 +1957,7 @@ check_gid_switch()
  */
 
 static VALUE
-p_sys_setuid(obj, id)
-    VALUE obj, id;
+p_sys_setuid(VALUE obj, VALUE id)
 {
 #if defined HAVE_SETUID
     check_uid_switch();
@@ -2043,8 +1980,7 @@ p_sys_setuid(obj, id)
  */
 
 static VALUE
-p_sys_setruid(obj, id)
-    VALUE obj, id;
+p_sys_setruid(VALUE obj, VALUE id)
 {
 #if defined HAVE_SETRUID
     check_uid_switch();
@@ -2066,8 +2002,7 @@ p_sys_setruid(obj, id)
  */
 
 static VALUE
-p_sys_seteuid(obj, id)
-    VALUE obj, id;
+p_sys_seteuid(VALUE obj, VALUE id)
 {
 #if defined HAVE_SETEUID
     check_uid_switch();
@@ -2091,8 +2026,7 @@ p_sys_seteuid(obj, id)
  */
 
 static VALUE
-p_sys_setreuid(obj, rid, eid)
-    VALUE obj, rid, eid;
+p_sys_setreuid(VALUE obj, VALUE rid, VALUE eid)
 {
 #if defined HAVE_SETREUID
     check_uid_switch();
@@ -2116,8 +2050,7 @@ p_sys_setreuid(obj, rid, eid)
  */
 
 static VALUE
-p_sys_setresuid(obj, rid, eid, sid)
-    VALUE obj, rid, eid, sid;
+p_sys_setresuid(VALUE obj, VALUE rid, VALUE eid, VALUE sid)
 {
 #if defined HAVE_SETRESUID
     check_uid_switch();
@@ -2141,8 +2074,7 @@ p_sys_setresuid(obj, rid, eid, sid)
  */
 
 static VALUE
-proc_getuid(obj)
-    VALUE obj;
+proc_getuid(VALUE obj)
 {
     int uid = getuid();
     return INT2FIX(uid);
@@ -2158,8 +2090,7 @@ proc_getuid(obj)
  */
 
 static VALUE
-proc_setuid(obj, id)
-    VALUE obj, id;
+proc_setuid(VALUE obj, VALUE id)
 {
     int uid = NUM2INT(id);
 
@@ -2200,8 +2131,7 @@ static int SAVED_USER_ID = -1;
 
 #ifdef BROKEN_SETREUID
 int
-setreuid(ruid, euid)
-    rb_uid_t ruid, euid;
+setreuid(rb_uid_t ruid, rb_uid_t euid)
 {
     if (ruid != -1 && ruid != getuid()) {
 	if (euid == -1) euid = geteuid();
@@ -2228,8 +2158,7 @@ setreuid(ruid, euid)
  */
 
 static VALUE
-p_uid_change_privilege(obj, id)
-    VALUE obj, id;
+p_uid_change_privilege(VALUE obj, VALUE id)
 {
     int uid;
 
@@ -2378,8 +2307,7 @@ p_uid_change_privilege(obj, id)
  */
 
 static VALUE
-p_sys_setgid(obj, id)
-    VALUE obj, id;
+p_sys_setgid(VALUE obj, VALUE id)
 {
 #if defined HAVE_SETGID
     check_gid_switch();
@@ -2401,8 +2329,7 @@ p_sys_setgid(obj, id)
  */
 
 static VALUE
-p_sys_setrgid(obj, id)
-    VALUE obj, id;
+p_sys_setrgid(VALUE obj, VALUE id)
 {
 #if defined HAVE_SETRGID
     check_gid_switch();
@@ -2425,8 +2352,7 @@ p_sys_setrgid(obj, id)
  */
 
 static VALUE
-p_sys_setegid(obj, id)
-    VALUE obj, id;
+p_sys_setegid(VALUE obj, VALUE id)
 {
 #if defined HAVE_SETEGID
     check_gid_switch();
@@ -2450,8 +2376,7 @@ p_sys_setegid(obj, id)
  */
 
 static VALUE
-p_sys_setregid(obj, rid, eid)
-    VALUE obj, rid, eid;
+p_sys_setregid(VALUE obj, VALUE rid, VALUE eid)
 {
 #if defined HAVE_SETREGID
     check_gid_switch();
@@ -2474,8 +2399,7 @@ p_sys_setregid(obj, rid, eid)
  */
 
 static VALUE
-p_sys_setresgid(obj, rid, eid, sid)
-    VALUE obj, rid, eid, sid;
+p_sys_setresgid(VALUE obj, VALUE rid, VALUE eid, VALUE sid)
 {
 #if defined HAVE_SETRESGID
     check_gid_switch();
@@ -2500,8 +2424,7 @@ p_sys_setresgid(obj, rid, eid, sid)
  */
 
 static VALUE
-p_sys_issetugid(obj)
-    VALUE obj;
+p_sys_issetugid(VALUE obj)
 {
 #if defined HAVE_ISSETUGID
     rb_secure(2);
@@ -2529,8 +2452,7 @@ p_sys_issetugid(obj)
  */
 
 static VALUE
-proc_getgid(obj)
-    VALUE obj;
+proc_getgid(VALUE obj)
 {
     int gid = getgid();
     return INT2FIX(gid);
@@ -2545,8 +2467,7 @@ proc_getgid(obj)
  */
 
 static VALUE
-proc_setgid(obj, id)
-    VALUE obj, id;
+proc_setgid(VALUE obj, VALUE id)
 {
     int gid = NUM2INT(id);
 
@@ -2696,8 +2617,7 @@ proc_setgroups(VALUE obj, VALUE ary)
  */
 
 static VALUE
-proc_initgroups(obj, uname, base_grp)
-    VALUE obj, uname, base_grp;
+proc_initgroups(VALUE obj, VALUE uname, VALUE base_grp)
 {
 #ifdef HAVE_INITGROUPS
     if (initgroups(StringValuePtr(uname), (rb_gid_t)NUM2INT(base_grp)) != 0) {
@@ -2722,8 +2642,7 @@ proc_initgroups(obj, uname, base_grp)
  */
 
 static VALUE
-proc_getmaxgroups(obj)
-    VALUE obj;
+proc_getmaxgroups(VALUE obj)
 {
     return INT2FIX(maxgroups);
 }
@@ -2765,8 +2684,7 @@ static int SAVED_GROUP_ID = -1;
 
 #ifdef BROKEN_SETREGID
 int
-setregid(rgid, egid)
-    rb_gid_t rgid, egid;
+setregid(rb_gid_t rgid, rb_gid_t egid)
 {
     if (rgid != -1 && rgid != getgid()) {
 	if (egid == -1) egid = getegid();
@@ -2793,8 +2711,7 @@ setregid(rgid, egid)
  */
 
 static VALUE
-p_gid_change_privilege(obj, id)
-    VALUE obj, id;
+p_gid_change_privilege(VALUE obj, VALUE id)
 {
     int gid;
 
@@ -2945,8 +2862,7 @@ p_gid_change_privilege(obj, id)
  */
 
 static VALUE
-proc_geteuid(obj)
-    VALUE obj;
+proc_geteuid(VALUE obj)
 {
     int euid = geteuid();
     return INT2FIX(euid);
@@ -2962,8 +2878,7 @@ proc_geteuid(obj)
  */
 
 static VALUE
-proc_seteuid(obj, euid)
-    VALUE obj, euid;
+proc_seteuid(VALUE obj, VALUE euid)
 {
     check_uid_switch();
 #if defined(HAVE_SETRESUID) && !defined(__CHECKER__)
@@ -2987,8 +2902,7 @@ proc_seteuid(obj, euid)
 }
 
 static VALUE
-rb_seteuid_core(euid)
-    int euid;
+rb_seteuid_core(int euid)
 {
     int uid;
 
@@ -3037,8 +2951,7 @@ rb_seteuid_core(euid)
  */
 
 static VALUE
-p_uid_grant_privilege(obj, id)
-    VALUE obj, id;
+p_uid_grant_privilege(VALUE obj, VALUE id)
 {
     return rb_seteuid_core(NUM2INT(id));
 }
@@ -3057,8 +2970,7 @@ p_uid_grant_privilege(obj, id)
  */
 
 static VALUE
-proc_getegid(obj)
-    VALUE obj;
+proc_getegid(VALUE obj)
 {
     int egid = getegid();
 
@@ -3075,8 +2987,7 @@ proc_getegid(obj)
  */
 
 static VALUE
-proc_setegid(obj, egid)
-    VALUE obj, egid;
+proc_setegid(VALUE obj, VALUE egid)
 {
     check_gid_switch();
 
@@ -3101,8 +3012,7 @@ proc_setegid(obj, egid)
 }
 
 static VALUE
-rb_setegid_core(egid)
-    int egid;
+rb_setegid_core(int egid)
 {
     int gid;
 
@@ -3151,8 +3061,7 @@ rb_setegid_core(egid)
  */
 
 static VALUE
-p_gid_grant_privilege(obj, id)
-    VALUE obj, id;
+p_gid_grant_privilege(VALUE obj, VALUE id)
 {
     return rb_setegid_core(NUM2INT(id));
 }
@@ -3193,8 +3102,7 @@ p_uid_exchangeable()
  */
 
 static VALUE
-p_uid_exchange(obj)
-    VALUE obj;
+p_uid_exchange(VALUE obj)
 {
     int uid, euid;
 
@@ -3251,8 +3159,7 @@ p_gid_exchangeable()
  */
 
 static VALUE
-p_gid_exchange(obj)
-    VALUE obj;
+p_gid_exchange(VALUE obj)
 {
     int gid, egid;
 
@@ -3297,8 +3204,7 @@ p_uid_have_saved_id()
 
 #if defined(HAVE_SETRESUID) || defined(HAVE_SETEUID) || defined(_POSIX_SAVED_IDS)
 static VALUE
-p_uid_sw_ensure(id)
-    int id;
+p_uid_sw_ensure(int id)
 {
     under_uid_switch = 0;
     return rb_seteuid_core(id);
@@ -3319,8 +3225,7 @@ p_uid_sw_ensure(id)
  */
 
 static VALUE
-p_uid_switch(obj)
-    VALUE obj;
+p_uid_switch(VALUE obj)
 {
     int uid, euid;
 
@@ -3352,16 +3257,14 @@ p_uid_switch(obj)
 
 #else
 static VALUE
-p_uid_sw_ensure(obj)
-    VALUE obj;
+p_uid_sw_ensure(VALUE obj)
 {
     under_uid_switch = 0;
     return p_uid_exchange(obj);
 }
 
 static VALUE
-p_uid_switch(obj)
-    VALUE obj;
+p_uid_switch(VALUE obj)
 {
     int uid, euid;
 
@@ -3408,8 +3311,7 @@ p_gid_have_saved_id()
 
 #if defined(HAVE_SETRESGID) || defined(HAVE_SETEGID) || defined(_POSIX_SAVED_IDS)
 static VALUE
-p_gid_sw_ensure(id)
-    int id;
+p_gid_sw_ensure(int id)
 {
     under_gid_switch = 0;
     return rb_setegid_core(id);
@@ -3430,8 +3332,7 @@ p_gid_sw_ensure(id)
  */
 
 static VALUE
-p_gid_switch(obj)
-    VALUE obj;
+p_gid_switch(VALUE obj)
 {
     int gid, egid;
 
@@ -3462,16 +3363,14 @@ p_gid_switch(obj)
     }
 #else
 static VALUE
-p_gid_sw_ensure(obj)
-    VALUE obj;
+p_gid_sw_ensure(VALUE obj)
 {
     under_gid_switch = 0;
     return p_gid_exchange(obj);
 }
 
 static VALUE
-p_gid_switch(obj)
-    VALUE obj;
+p_gid_switch(VALUE obj)
 {
     int gid, egid;
 
@@ -3508,8 +3407,7 @@ p_gid_switch(obj)
  */
 
 VALUE
-rb_proc_times(obj)
-    VALUE obj;
+rb_proc_times(VALUE obj)
 {
 #if defined(HAVE_TIMES) && !defined(__CHECKER__)
     const double hertz =

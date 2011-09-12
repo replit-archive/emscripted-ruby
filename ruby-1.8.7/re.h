@@ -1,3 +1,4 @@
+extern "C" {
 /**********************************************************************
 
   re.h -
@@ -40,3 +41,4 @@ RUBY_EXTERN int ruby_ignorecase;
 int rb_reg_mbclen2 _((unsigned int, VALUE));
 #define mbclen2(c,re) rb_reg_mbclen2((c),(re))
 #endif
+}

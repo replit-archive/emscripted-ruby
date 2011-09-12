@@ -79,7 +79,7 @@ char *ruby_sourcefile;		/* current source file */
 int   ruby_sourceline;		/* current line no. */
 
 static int yylex();
-static int yyerror();
+static int yyerror(const char *msg);
 
 static enum lex_state {
     EXPR_BEG,			/* ignore newline, +/- is a sign. */
@@ -124,59 +124,59 @@ static int compile_for_eval = 0;
 static ID cur_mid = 0;
 static int command_start = Qtrue;
 
-static NODE *cond();
-static NODE *logop();
-static int cond_negative();
+static NODE *cond(NODE *nodep);
+static NODE *logop(enum node_type type, NODE *left, NODE *right);
+static int cond_negative(NODE **nodep);
 
-static NODE *newline_node();
-static void fixpos();
+static NODE *newline_node(NODE *node);
+static void fixpos(NODE *node, NODE *orig);
 
-static int value_expr0();
-static void void_expr0();
-static void void_stmts();
-static NODE *remove_begin();
+static int value_expr0(NODE *node);
+static void void_expr0(NODE *node);
+static void void_stmts(NODE *node);
+static NODE *remove_begin(NODE *node);
 #define value_expr(node) value_expr0((node) = remove_begin(node))
 #define void_expr(node) void_expr0((node) = remove_begin(node))
 
-static NODE *block_append();
-static NODE *list_append();
-static NODE *list_concat();
-static NODE *arg_concat();
-static NODE *arg_prepend();
-static NODE *literal_concat();
-static NODE *new_evstr();
-static NODE *evstr2dstr();
-static NODE *call_op();
+static NODE *block_append(NODE *head, NODE *tail);
+static NODE *list_append(NODE *list, NODE *item);
+static NODE *list_concat(NODE *head, NODE *tail);
+static NODE *arg_concat(NODE *node1, NODE *node2);
+static NODE *arg_prepend(NODE *node1, NODE *node2);
+static NODE *literal_concat(NODE *head, NODE *tail);
+static NODE *new_evstr(NODE *node);
+static NODE *evstr2dstr(NODE *node);
+static NODE *call_op(NODE *recv, ID id, int narg, NODE *arg1);
 static int in_defined = 0;
 
-static NODE *negate_lit();
-static NODE *ret_args();
-static NODE *arg_blk_pass();
-static NODE *new_call();
-static NODE *new_fcall();
-static NODE *new_super();
-static NODE *new_yield();
+static NODE *negate_lit(NODE *node);
+static NODE *ret_args(NODE *node);
+static NODE *arg_blk_pass(NODE *node1, NODE *node2);
+static NODE *new_call(NODE *r, ID m, NODE *a);
+static NODE *new_fcall(ID m, NODE *a);
+static NODE *new_super(NODE *a);
+static NODE *new_yield(NODE *node);
 
-static NODE *gettable();
-static NODE *assignable();
-static NODE *aryset();
-static NODE *attrset();
-static void rb_backref_error();
-static NODE *node_assign();
+static NODE *gettable(ID id);
+static NODE *assignable(ID id, NODE *val);
+static NODE *aryset(NODE *recv, NODE *idx);
+static NODE *attrset(NODE *recv, ID id);
+static void rb_backref_error(NODE *node);
+static NODE *node_assign(NODE *lhs, NODE *rhs);
 
-static NODE *match_gen();
-static void local_push();
+static NODE *match_gen(NODE *node1, NODE *node2);
+static void local_push(int top);
 static void local_pop();
-static int  local_append();
-static int  local_cnt();
-static int  local_id();
+static int  local_append(ID id);
+static int  local_cnt(ID id);
+static int  local_id(ID id);
 static ID  *local_tbl();
 static ID   internal_id();
 
 static struct RVarmap *dyna_push();
-static void dyna_pop();
+static void dyna_pop(struct RVarmap* vars);
 static int dyna_in_block();
-static NODE *dyna_init();
+static NODE *dyna_init(NODE *node, struct RVarmap *pre);
 
 static void top_local_init();
 static void top_local_setup();
@@ -2576,7 +2576,7 @@ static int   tokidx, toksiz = 0;
 
 #define LEAVE_BS 1
 
-static VALUE (*lex_gets)();	/* gets function */
+static VALUE (*lex_gets)(...);	/* gets function */
 static VALUE lex_input;		/* non-nil if File */
 static VALUE lex_lastline;	/* gc protect */
 static char *lex_pbeg;
@@ -2584,8 +2584,7 @@ static char *lex_p;
 static char *lex_pend;
 
 static int
-yyerror(msg)
-    const char *msg;
+yyerror(const char *msg)
 {
     const int max_line_margin = 30;
     const char *p, *pe;
@@ -2654,9 +2653,7 @@ static NODE *parser_heap;
 #endif
 
 static NODE*
-yycompile(f, line)
-    char *f;
-    int line;
+yycompile(char *f, int line)
 {
     int n;
     NODE *node = 0;
@@ -2717,8 +2714,7 @@ yycompile(f, line)
 static int lex_gets_ptr;
 
 static VALUE
-lex_get_str(s)
-    VALUE s;
+lex_get_str(VALUE s)
 {
     char *beg, *end, *pend;
 
@@ -2747,10 +2743,7 @@ lex_getline()
 }
 
 NODE*
-rb_compile_string(f, s, line)
-    const char *f;
-    VALUE s;
-    int line;
+rb_compile_string(const char *f, VALUE s, int line)
 {
     lex_gets = lex_get_str;
     lex_gets_ptr = 0;
@@ -2763,18 +2756,13 @@ rb_compile_string(f, s, line)
 }
 
 NODE*
-rb_compile_cstr(f, s, len, line)
-    const char *f, *s;
-    int len, line;
+rb_compile_cstr(const char *f, const char *s, int len, int line)
 {
     return rb_compile_string(f, rb_str_new(s, len), line);
 }
 
 NODE*
-rb_compile_file(f, file, start)
-    const char *f;
-    VALUE file;
-    int start;
+rb_compile_file(const char *f, VALUE file, int start)
 {
     lex_gets = rb_io_gets;
     lex_input = file;
@@ -2818,8 +2806,7 @@ nextc()
 }
 
 static void
-pushback(c)
-    int c;
+pushback(int c)
 {
     if (c == -1) return;
     lex_p--;
@@ -2849,8 +2836,7 @@ newtok()
 }
 
 static void
-tokadd(c)
-    char c;
+tokadd(char c)
 {
     tokenbuf[tokidx++] = c;
     if (tokidx >= toksiz) {
@@ -3109,16 +3095,14 @@ enum string_type {
 };
 
 static void
-dispose_string(str)
-    VALUE str;
+dispose_string(VALUE str)
 {
     xfree(RSTRING(str)->ptr);
     rb_gc_force_recycle(str);
 }
 
 static int
-tokadd_string(func, term, paren, nest)
-    int func, term, paren, *nest;
+tokadd_string(int func, int term, int paren, int *nest)
 {
     int c;
 
@@ -3199,8 +3183,7 @@ tokadd_string(func, term, paren, nest)
 	rb_node_newnode(NODE_STRTERM, (func), (term) | ((paren) << (CHAR_BIT * 2)), 0)
 
 static int
-parse_string(quote)
-    NODE *quote;
+parse_string(NODE *quote)
 {
     int func = quote->nd_func;
     int term = nd_term(quote);
@@ -3310,8 +3293,7 @@ heredoc_identifier()
 }
 
 static void
-heredoc_restore(here)
-    NODE *here;
+heredoc_restore(NODE *here)
 {
     VALUE line = here->nd_orig;
     lex_lastline = line;
@@ -3325,9 +3307,7 @@ heredoc_restore(here)
 }
 
 static int
-whole_match_p(eos, len, indent)
-    char *eos;
-    int len, indent;
+whole_match_p(char *eos, int len, int indent)
 {
     char *p = lex_pbeg;
     int n;
@@ -3342,8 +3322,7 @@ whole_match_p(eos, len, indent)
 }
 
 static int
-here_document(here)
-    NODE *here;
+here_document(NODE *here)
 {
     int c, func, indent = 0;
     char *eos, *p, *pend;
@@ -4581,9 +4560,7 @@ yylex()
 }
 
 NODE*
-rb_node_newnode(type, a0, a1, a2)
-    enum node_type type;
-    VALUE a0, a1, a2;
+rb_node_newnode(enum node_type type, VALUE a0, VALUE a1, VALUE a2)
 {
     NODE *n = (NODE*)rb_newobj();
 
@@ -4600,22 +4577,19 @@ rb_node_newnode(type, a0, a1, a2)
 }
 
 static enum node_type
-nodetype(node)			/* for debug */
-    NODE *node;
+nodetype(NODE *node)
 {
     return (enum node_type)nd_type(node);
 }
 
 static int
-nodeline(node)
-    NODE *node;
+nodeline(NODE *node)
 {
     return nd_line(node);
 }
 
 static NODE*
-newline_node(node)
-    NODE *node;
+newline_node(NODE *node)
 {
     NODE *nl = 0;
     if (node) {
@@ -4631,8 +4605,7 @@ newline_node(node)
 }
 
 static void
-fixpos(node, orig)
-    NODE *node, *orig;
+fixpos(NODE *node, NODE *orig)
 {
     if (!node) return;
     if (!orig) return;
@@ -4642,9 +4615,7 @@ fixpos(node, orig)
 }
 
 static void
-parser_warning(node, mesg)
-    NODE *node;
-    const char *mesg;
+parser_warning(NODE *node, const char *mesg)
 {
     int line = ruby_sourceline;
     ruby_sourceline = nd_line(node);
@@ -4653,9 +4624,7 @@ parser_warning(node, mesg)
 }
 
 static void
-parser_warn(node, mesg)
-    NODE *node;
-    const char *mesg;
+parser_warn(NODE *node, const char *mesg)
 {
     int line = ruby_sourceline;
     ruby_sourceline = nd_line(node);
@@ -4664,8 +4633,7 @@ parser_warn(node, mesg)
 }
 
 static NODE*
-block_append(head, tail)
-    NODE *head, *tail;
+block_append(NODE *head, NODE *tail)
 {
     NODE *end, *h = head;
 
@@ -4724,8 +4692,7 @@ block_append(head, tail)
 
 /* append item to the list */
 static NODE*
-list_append(list, item)
-    NODE *list, *item;
+list_append(NODE *list, NODE *item)
 {
     NODE *last;
 
@@ -4745,8 +4712,7 @@ list_append(list, item)
 
 /* concat two lists */
 static NODE*
-list_concat(head, tail)
-    NODE *head, *tail;
+list_concat(NODE *head, NODE *tail)
 {
     NODE *last;
 
@@ -4771,8 +4737,7 @@ list_concat(head, tail)
 
 /* concat two string literals */
 static NODE *
-literal_concat(head, tail)
-    NODE *head, *tail;
+literal_concat(NODE *head, NODE *tail)
 {
     enum node_type htype;
 
@@ -4821,8 +4786,7 @@ literal_concat(head, tail)
 }
 
 static NODE *
-evstr2dstr(node)
-    NODE *node;
+evstr2dstr(NODE *node)
 {
     if (nd_type(node) == NODE_EVSTR) {
 	node = list_append(NEW_DSTR(rb_str_new(0, 0)), node);
@@ -4831,8 +4795,7 @@ evstr2dstr(node)
 }
 
 static NODE *
-new_evstr(node)
-    NODE *node;
+new_evstr(NODE *node)
 {
     NODE *head = node;
 
@@ -4850,11 +4813,7 @@ new_evstr(node)
 }
 
 static NODE *
-call_op(recv, id, narg, arg1)
-    NODE *recv;
-    ID id;
-    int narg;
-    NODE *arg1;
+call_op(NODE *recv, ID id, int narg, NODE *arg1)
 {
     value_expr(recv);
     if (narg == 1) {
@@ -4868,9 +4827,7 @@ call_op(recv, id, narg, arg1)
 }
 
 static NODE*
-match_gen(node1, node2)
-    NODE *node1;
-    NODE *node2;
+match_gen(NODE *node1, NODE *node2)
 {
     local_cnt('~');
 
@@ -4906,8 +4863,7 @@ match_gen(node1, node2)
 }
 
 static NODE*
-gettable(id)
-    ID id;
+gettable(ID id)
 {
     if (id == kSELF) {
 	return NEW_SELF();
@@ -4957,9 +4913,7 @@ gettable(id)
 static VALUE dyna_var_lookup _((ID id));
 
 static NODE*
-assignable(id, val)
-    ID id;
-    NODE *val;
+assignable(ID id, NODE *val)
 {
     value_expr(val);
     if (id == kSELF) {
@@ -5017,8 +4971,7 @@ assignable(id, val)
 }
 
 static NODE *
-aryset(recv, idx)
-    NODE *recv, *idx;
+aryset(NODE *recv, NODE *idx)
 {
     if (recv && nd_type(recv) == NODE_SELF)
 	recv = (NODE *)1;
@@ -5028,8 +4981,7 @@ aryset(recv, idx)
 }
 
 ID
-rb_id_attrset(id)
-    ID id;
+rb_id_attrset(ID id)
 {
     id &= ~ID_SCOPE_MASK;
     id |= ID_ATTRSET;
@@ -5037,9 +4989,7 @@ rb_id_attrset(id)
 }
 
 static NODE *
-attrset(recv, id)
-    NODE *recv;
-    ID id;
+attrset(NODE *recv, ID id)
 {
     if (recv && nd_type(recv) == NODE_SELF)
 	recv = (NODE *)1;
@@ -5049,8 +4999,7 @@ attrset(recv, id)
 }
 
 static void
-rb_backref_error(node)
-    NODE *node;
+rb_backref_error(NODE *node)
 {
     switch (nd_type(node)) {
       case NODE_NTH_REF:
@@ -5063,18 +5012,14 @@ rb_backref_error(node)
 }
 
 static NODE *
-arg_concat(node1, node2)
-    NODE *node1;
-    NODE *node2;
+arg_concat(NODE *node1, NODE *node2)
 {
     if (!node2) return node1;
     return NEW_ARGSCAT(node1, node2);
 }
 
 static NODE *
-arg_add(node1, node2)
-    NODE *node1;
-    NODE *node2;
+arg_add(NODE *node1, NODE *node2)
 {
     if (!node1) return NEW_LIST(node2);
     if (nd_type(node1) == NODE_ARRAY) {
@@ -5086,8 +5031,7 @@ arg_add(node1, node2)
 }
 
 static NODE*
-node_assign(lhs, rhs)
-    NODE *lhs, *rhs;
+node_assign(NODE *lhs, NODE *rhs)
 {
     if (!lhs) return 0;
 
@@ -5119,8 +5063,7 @@ node_assign(lhs, rhs)
 }
 
 static int
-value_expr0(node)
-    NODE *node;
+value_expr0(NODE *node)
 {
     int cond = 0;
 
@@ -5175,8 +5118,7 @@ value_expr0(node)
 }
 
 static void
-void_expr0(node)
-    NODE *node;
+void_expr0(NODE *node)
 {
     const char *useless = 0;
 
@@ -5271,8 +5213,7 @@ void_expr0(node)
 }
 
 static void
-void_stmts(node)
-    NODE *node;
+void_stmts(NODE *node)
 {
     if (!RTEST(ruby_verbose)) return;
     if (!node) return;
@@ -5286,8 +5227,7 @@ void_stmts(node)
 }
 
 static NODE *
-remove_begin(node)
-    NODE *node;
+remove_begin(NODE *node)
 {
     NODE **n = &node;
     while (*n) {
@@ -5305,8 +5245,7 @@ remove_begin(node)
 }
 
 static int
-assign_in_cond(node)
-    NODE *node;
+assign_in_cond(NODE *node)
 {
     switch (nd_type(node)) {
       case NODE_MASGN:
@@ -5359,26 +5298,21 @@ e_option_supplied()
 }
 
 static void
-warn_unless_e_option(node, str)
-    NODE *node;
-    const char *str;
+warn_unless_e_option(NODE *node, const char *str)
 {
     if (!e_option_supplied()) parser_warn(node, str);
 }
 
 static void
-warning_unless_e_option(node, str)
-    NODE *node;
-    const char *str;
+warning_unless_e_option(NODE *node, const char *str)
 {
     if (!e_option_supplied()) parser_warning(node, str);
 }
 
-static NODE *cond0();
+static NODE *cond0(NODE *node);
 
 static NODE*
-range_op(node)
-    NODE *node;
+range_op(NODE *node)
 {
     enum node_type type;
 
@@ -5400,8 +5334,7 @@ range_op(node)
 }
 
 static int
-literal_node(node)
-    NODE *node;
+literal_node(NODE *node)
 {
     if (!node) return 1;	/* same as NODE_NIL */
     switch (nd_type(node)) {
@@ -5422,8 +5355,7 @@ literal_node(node)
 }
 
 static NODE*
-cond0(node)
-    NODE *node;
+cond0(NODE *node)
 {
     if (node == 0) return 0;
     assign_in_cond(node);
@@ -5485,8 +5417,7 @@ cond0(node)
 }
 
 static NODE*
-cond(node)
-    NODE *node;
+cond(NODE *node)
 {
     if (node == 0) return 0;
     value_expr(node);
@@ -5498,9 +5429,7 @@ cond(node)
 }
 
 static NODE*
-logop(type, left, right)
-    enum node_type type;
-    NODE *left, *right;
+logop(enum node_type type, NODE *left, NODE *right)
 {
     value_expr(left);
     if (left && nd_type(left) == type) {
@@ -5515,8 +5444,7 @@ logop(type, left, right)
 }
 
 static int
-cond_negative(nodep)
-    NODE **nodep;
+cond_negative(NODE **nodep)
 {
     NODE *c = *nodep;
 
@@ -5535,8 +5463,7 @@ cond_negative(nodep)
 }
 
 static void
-no_blockarg(node)
-    NODE *node;
+no_blockarg(NODE *node)
 {
     if (node && nd_type(node) == NODE_BLOCK_PASS) {
 	rb_compile_error("block argument should not be given");
@@ -5544,8 +5471,7 @@ no_blockarg(node)
 }
 
 static NODE *
-ret_args(node)
-    NODE *node;
+ret_args(NODE *node)
 {
     if (node) {
 	no_blockarg(node);
@@ -5560,8 +5486,7 @@ ret_args(node)
 }
 
 static NODE *
-new_yield(node)
-    NODE *node;
+new_yield(NODE *node)
 {
     long state = Qtrue;
 
@@ -5582,8 +5507,7 @@ new_yield(node)
 }
 
 static NODE*
-negate_lit(node)
-    NODE *node;
+negate_lit(NODE *node)
 {
     switch (TYPE(node->nd_lit)) {
       case T_FIXNUM:
@@ -5602,9 +5526,7 @@ negate_lit(node)
 }
 
 static NODE *
-arg_blk_pass(node1, node2)
-    NODE *node1;
-    NODE *node2;
+arg_blk_pass(NODE *node1, NODE *node2)
 {
     if (node2) {
 	node2->nd_head = node1;
@@ -5614,8 +5536,7 @@ arg_blk_pass(node1, node2)
 }
 
 static NODE*
-arg_prepend(node1, node2)
-    NODE *node1, *node2;
+arg_prepend(NODE *node1, NODE *node2)
 {
     switch (nd_type(node2)) {
       case NODE_ARRAY:
@@ -5635,10 +5556,7 @@ arg_prepend(node1, node2)
 }
 
 static NODE*
-new_call(r,m,a)
-    NODE *r;
-    ID m;
-    NODE *a;
+new_call(NODE *r, ID m, NODE *a)
 {
     if (a && nd_type(a) == NODE_BLOCK_PASS) {
 	a->nd_iter = NEW_CALL(r,m,a->nd_head);
@@ -5648,9 +5566,7 @@ new_call(r,m,a)
 }
 
 static NODE*
-new_fcall(m,a)
-    ID m;
-    NODE *a;
+new_fcall(ID m, NODE *a)
 {
     if (a && nd_type(a) == NODE_BLOCK_PASS) {
 	a->nd_iter = NEW_FCALL(m,a->nd_head);
@@ -5660,8 +5576,7 @@ new_fcall(m,a)
 }
 
 static NODE*
-new_super(a)
-    NODE *a;
+new_super(NODE *a)
 {
     if (a && nd_type(a) == NODE_BLOCK_PASS) {
 	a->nd_iter = NEW_SUPER(a->nd_head);
@@ -5680,8 +5595,7 @@ static struct local_vars {
 } *lvtbl;
 
 static void
-local_push(top)
-    int top;
+local_push(int top)
 {
     struct local_vars *local;
 
@@ -5722,8 +5636,7 @@ local_tbl()
 }
 
 static int
-local_append(id)
-    ID id;
+local_append(ID id)
 {
     if (lvtbl->tbl == 0) {
 	lvtbl->tbl = ALLOC_N(ID, 4);
@@ -5743,8 +5656,7 @@ local_append(id)
 }
 
 static int
-local_cnt(id)
-    ID id;
+local_cnt(ID id)
 {
     int cnt, max;
 
@@ -5757,8 +5669,7 @@ local_cnt(id)
 }
 
 static int
-local_id(id)
-    ID id;
+local_id(ID id)
 {
     int i, max;
 
@@ -5831,8 +5742,7 @@ top_local_setup()
 #define DVAR_USED FL_USER6
 
 static VALUE
-dyna_var_lookup(id)
-    ID id;
+dyna_var_lookup(ID id)
 {
     struct RVarmap *vars = ruby_dyna_vars;
 
@@ -5857,8 +5767,7 @@ dyna_push()
 }
 
 static void
-dyna_pop(vars)
-    struct RVarmap* vars;
+dyna_pop(struct RVarmap* vars)
 {
     lvtbl->dlev--;
     ruby_dyna_vars = vars;
@@ -5871,9 +5780,7 @@ dyna_in_block()
 }
 
 static NODE *
-dyna_init(node, pre)
-    NODE *node;
-    struct RVarmap *pre;
+dyna_init(NODE *node, struct RVarmap *pre)
 {
     struct RVarmap *post = ruby_dyna_vars;
     NODE *var;
@@ -5925,8 +5832,7 @@ rb_parser_append_print()
 }
 
 void
-rb_parser_while_loop(chop, split)
-    int chop, split;
+rb_parser_while_loop(int chop, int split)
 {
     if (split) {
 	ruby_eval_tree =
@@ -6008,8 +5914,7 @@ internal_id()
 }
 
 static int
-is_special_global_name(m)
-    const char *m;
+is_special_global_name(const char *m)
 {
     switch (*m) {
       case '~': case '*': case '$': case '?': case '!': case '@':
@@ -6031,8 +5936,7 @@ is_special_global_name(m)
 }
 
 int
-rb_symname_p(name)
-    const char *name;
+rb_symname_p(const char *name)
 {
     const char *m = name;
     int localid = Qfalse;
@@ -6105,8 +6009,7 @@ rb_symname_p(name)
 }
 
 int
-rb_sym_interned_p(str)
-    VALUE str;
+rb_sym_interned_p(VALUE str)
 {
     ID id;
 
@@ -6116,8 +6019,7 @@ rb_sym_interned_p(str)
 }
 
 ID
-rb_intern(name)
-    const char *name;
+rb_intern(const char *name)
 {
     const char *m = name;
     ID id;
@@ -6194,8 +6096,7 @@ rb_intern(name)
 }
 
 const char *
-rb_id2name(id)
-    ID id;
+rb_id2name(ID id)
 {
     const char *name;
     st_data_t data;
@@ -6234,10 +6135,7 @@ rb_id2name(id)
 }
 
 static int
-symbols_i(key, value, ary)
-    char *key;
-    ID value;
-    VALUE ary;
+symbols_i(char *key, ID value, VALUE ary)
 {
     rb_ary_push(ary, ID2SYM(value));
     return ST_CONTINUE;
@@ -6269,49 +6167,42 @@ rb_sym_all_symbols()
 }
 
 int
-rb_is_const_id(id)
-    ID id;
+rb_is_const_id(ID id)
 {
     if (is_const_id(id)) return Qtrue;
     return Qfalse;
 }
 
 int
-rb_is_class_id(id)
-    ID id;
+rb_is_class_id(ID id)
 {
     if (is_class_id(id)) return Qtrue;
     return Qfalse;
 }
 
 int
-rb_is_instance_id(id)
-    ID id;
+rb_is_instance_id(ID id)
 {
     if (is_instance_id(id)) return Qtrue;
     return Qfalse;
 }
 
 int
-rb_is_local_id(id)
-    ID id;
+rb_is_local_id(ID id)
 {
     if (is_local_id(id)) return Qtrue;
     return Qfalse;
 }
 
 int
-rb_is_junk_id(id)
-    ID id;
+rb_is_junk_id(ID id)
 {
     if (is_junk_id(id)) return Qtrue;
     return Qfalse;
 }
 
 static void
-special_local_set(c, val)
-    char c;
-    VALUE val;
+special_local_set(char c, VALUE val)
 {
     int cnt;
 
@@ -6332,8 +6223,7 @@ rb_backref_get()
 }
 
 void
-rb_backref_set(val)
-    VALUE val;
+rb_backref_set(VALUE val)
 {
     VALUE *var = rb_svar(1);
     if (var) {
@@ -6355,8 +6245,7 @@ rb_lastline_get()
 }
 
 void
-rb_lastline_set(val)
-    VALUE val;
+rb_lastline_set(VALUE val)
 {
     VALUE *var = rb_svar(0);
     if (var) {
@@ -6374,8 +6263,7 @@ rb_lastline_set(val)
 			   (n)->u3.cnt = (c), (p))
 
 static void *
-rb_parser_malloc(size)
-    size_t size;
+rb_parser_malloc(size_t size)
 {
     size_t cnt = HEAPCNT(1, size);
     NODE *n = NEWHEAP();
@@ -6385,8 +6273,7 @@ rb_parser_malloc(size)
 }
 
 static void *
-rb_parser_calloc(nelem, size)
-    size_t nelem, size;
+rb_parser_calloc(size_t nelem, size_t size)
 {
     size_t cnt = HEAPCNT(nelem, size);
     NODE *n = NEWHEAP();
@@ -6396,9 +6283,7 @@ rb_parser_calloc(nelem, size)
 }
 
 static void *
-rb_parser_realloc(ptr, size)
-    void *ptr;
-    size_t size;
+rb_parser_realloc(void *ptr, size_t size)
 {
     NODE *n;
     size_t cnt = HEAPCNT(1, size);
@@ -6418,8 +6303,7 @@ rb_parser_realloc(ptr, size)
 }
 
 static void
-rb_parser_free(ptr)
-    void *ptr;
+rb_parser_free(void *ptr)
 {
     NODE **prev = &parser_heap, *n;
 

@@ -1,3 +1,4 @@
+extern "C" {
 /**********************************************************************
 
   env.h -
@@ -58,3 +59,4 @@ struct RVarmap {
 extern struct RVarmap *ruby_dyna_vars;
 
 #endif /* ENV_H */
+}

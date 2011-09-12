@@ -1,3 +1,4 @@
+extern "C" {
 /**********************************************************************
 
   rubysig.h -
@@ -103,3 +104,4 @@ RUBY_EXTERN int rb_thread_tick;
 #endif
 
 #endif
+}

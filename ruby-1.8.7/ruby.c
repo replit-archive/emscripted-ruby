@@ -71,8 +71,7 @@ static int origargc;
 static char **origargv;
 
 static void
-usage(name)
-    const char *name;
+usage(const char *name)
 {
     /* This message really ought to be max 23 lines.
      * Removed -h because the user already knows that option. Others? */
@@ -182,8 +181,7 @@ rubylib_mangled_path2(const char *s)
 static void push_include _((const char *path));
 
 static void
-push_include(path)
-    const char *path;
+push_include(const char *path)
 {
     const char sep = PATH_SEP_CHAR;
     const char *p, *s;
@@ -237,8 +235,7 @@ push_include_cygwin(const char *path)
 #endif
 
 void
-ruby_incpush(path)
-    const char *path;
+ruby_incpush(const char *path)
 {
     if (path == 0)
 	return;
@@ -347,8 +344,7 @@ struct req_list {
 static struct req_list req_list_head, *req_list_last = &req_list_head;
 
 static void
-add_modules(mod)
-    const char *mod;
+add_modules(const char *mod)
 {
     struct req_list *list;
 
@@ -359,8 +355,6 @@ add_modules(mod)
     req_list_last->next = list;
     req_list_last = list;
 }
-
-extern void Init_ext _((void));
 
 static void
 require_libraries()
@@ -376,7 +370,7 @@ require_libraries()
     save[2] = NEW_NEWLINE(0);
     ruby_eval_tree = ruby_eval_tree_begin = 0;
     ruby_current_node = 0;
-    Init_ext();		/* should be called here for some reason :-( */
+//     Init_ext();		/* should be called here for some reason :-( */
     ruby_current_node = save[2];
     ruby_set_current_source();
     req_list_last = 0;
@@ -462,8 +456,7 @@ process_sflag()
 static void proc_options _((int argc, char **argv));
 
 static char*
-moreswitches(s)
-    char *s;
+moreswitches(char *s)
 {
     int argc; char *argv[3];
     char *p = s;
@@ -482,9 +475,7 @@ moreswitches(s)
 }
 
 static void
-proc_options(argc, argv)
-    int argc;
-    char **argv;
+proc_options(int argc, char **argv)
 {
     char *argv0 = argv[0];
     int do_search;
@@ -862,9 +853,7 @@ proc_options(argc, argv)
 extern int ruby__end__seen;
 
 static void
-load_file(fname, script)
-    const char *fname;
-    int script;
+load_file(const char *fname, int script)
 {
     extern VALUE rb_stdin;
     VALUE f;
@@ -985,8 +974,7 @@ load_file(fname, script)
 }
 
 void
-rb_load_file(fname)
-    const char *fname;
+rb_load_file(const char *fname)
 {
     load_file(fname, 0);
 }
@@ -1037,9 +1025,7 @@ set_arg0space()
 #endif
 
 static void
-set_arg0(val, id)
-    VALUE val;
-    ID id;
+set_arg0(VALUE val, ID id)
 {
     char *s;
     long i;
@@ -1108,8 +1094,7 @@ set_arg0(val, id)
 }
 
 void
-ruby_script(name)
-    const char *name;
+ruby_script(const char *name)
 {
     if (name) {
 	rb_progname = rb_tainted_str_new2(name);
@@ -1136,8 +1121,7 @@ init_ids()
 }
 
 static void
-forbid_setid(s)
-    const char *s;
+forbid_setid(const char *s)
 {
     if (euid != uid)
         rb_raise(rb_eSecurityError, "no %s allowed while running setuid", s);
@@ -1148,10 +1132,7 @@ forbid_setid(s)
 }
 
 static void
-verbose_setter(val, id, variable)
-    VALUE val;
-    ID id;
-    VALUE *variable;
+verbose_setter(VALUE val, ID id, VALUE *variable)
 {
     ruby_verbose = RTEST(val) ? Qtrue : val;
 }
@@ -1190,9 +1171,7 @@ ruby_prog_init()
 }
 
 void
-ruby_set_argv(argc, argv)
-    int argc;
-    char **argv;
+ruby_set_argv(int argc, char **argv)
 {
     int i;
 
@@ -1210,9 +1189,7 @@ ruby_set_argv(argc, argv)
 }
 
 void
-ruby_process_options(argc, argv)
-    int argc;
-    char **argv;
+ruby_process_options(int argc, char **argv)
 {
     origargc = argc; origargv = argv;
 

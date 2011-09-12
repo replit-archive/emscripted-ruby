@@ -174,10 +174,7 @@ CompareImpl(const char *p1, const char *p2, int nocase)
 #endif /* environment */
 
 static char *
-bracket(p, s, flags)
-    const char *p; /* pattern (next to '[') */
-    const char *s; /* string */
-    int flags;
+bracket(const char *p, const char *s, int flags)
 {
     const int nocase = flags & FNM_CASEFOLD;
     const int escape = !(flags & FNM_NOESCAPE);
@@ -224,10 +221,7 @@ bracket(p, s, flags)
 #define RETURN(val) return *pcur = p, *scur = s, (val);
 
 static int
-fnmatch_helper(pcur, scur, flags)
-    const char **pcur; /* pattern */
-    const char **scur; /* string */
-    int flags;
+fnmatch_helper(const char **pcur, const char **scur, int flags)
 {
     const int period = !(flags & FNM_DOTMATCH);
     const int pathname = flags & FNM_PATHNAME;
@@ -301,10 +295,7 @@ fnmatch_helper(pcur, scur, flags)
 }
 
 static int
-fnmatch(p, s, flags)
-    const char *p; /* pattern */
-    const char *s; /* string */
-    int flags;
+fnmatch(const char *p, const char *s, int flags)
 {
     const int period = !(flags & FNM_DOTMATCH);
     const int pathname = flags & FNM_PATHNAME;
@@ -354,8 +345,7 @@ struct dir_data {
 };
 
 static void
-free_dir(dir)
-    struct dir_data *dir;
+free_dir(struct dir_data *dir)
 {
     if (dir) {
 	if (dir->dir) closedir(dir->dir);
@@ -368,8 +358,7 @@ static VALUE dir_close _((VALUE));
 
 static VALUE dir_s_alloc _((VALUE));
 static VALUE
-dir_s_alloc(klass)
-    VALUE klass;
+dir_s_alloc(VALUE klass)
 {
     struct dir_data *dirp;
     VALUE obj = Data_Make_Struct(klass, struct dir_data, 0, free_dir, dirp);
@@ -387,8 +376,7 @@ dir_s_alloc(klass)
  *  Returns a new directory object for the named directory.
  */
 static VALUE
-dir_initialize(dir, dirname)
-    VALUE dir, dirname;
+dir_initialize(VALUE dir, VALUE dirname)
 {
     struct dir_data *dp;
 
@@ -426,15 +414,14 @@ dir_initialize(dir, dirname)
  */
 
 static VALUE
-dir_s_open(klass, dirname)
-    VALUE klass, dirname;
+dir_s_open(VALUE klass, VALUE dirname)
 {
     struct dir_data *dp;
     VALUE dir = Data_Make_Struct(klass, struct dir_data, 0, free_dir, dp);
 
     dir_initialize(dir, dirname);
     if (rb_block_given_p()) {
-	return rb_ensure(rb_yield, dir, dir_close, dir);
+	return rb_ensure((VALUE (*)(...))rb_yield, dir, (VALUE (*)(...))dir_close, dir);
     }
 
     return dir;
@@ -447,8 +434,7 @@ dir_closed()
 }
 
 static void
-dir_check(dir)
-    VALUE dir;
+dir_check(VALUE dir)
 {
     if (!OBJ_TAINTED(dir) && rb_safe_level() >= 4)
 	rb_raise(rb_eSecurityError, "Insecure: operation on untainted Dir");
@@ -468,8 +454,7 @@ dir_check(dir)
  *  Return a string describing this Dir object.
  */
 static VALUE
-dir_inspect(dir)
-    VALUE dir;
+dir_inspect(VALUE dir)
 {
     struct dir_data *dirp;
 
@@ -494,8 +479,7 @@ dir_inspect(dir)
  *     d.path   #=> ".."
  */
 static VALUE
-dir_path(dir)
-    VALUE dir;
+dir_path(VALUE dir)
 {
     struct dir_data *dirp;
 
@@ -517,8 +501,7 @@ dir_path(dir)
  *     d.read   #=> "config.h"
  */
 static VALUE
-dir_read(dir)
-    VALUE dir;
+dir_read(VALUE dir)
 {
     struct dir_data *dirp;
     struct dirent *dp;
@@ -556,8 +539,7 @@ dir_read(dir)
  *     Got main.rb
  */
 static VALUE
-dir_each(dir)
-    VALUE dir;
+dir_each(VALUE dir)
 {
     struct dir_data *dirp;
     struct dirent *dp;
@@ -586,8 +568,7 @@ dir_each(dir)
  *     d.tell   #=> 12
  */
 static VALUE
-dir_tell(dir)
-    VALUE dir;
+dir_tell(VALUE dir)
 {
 #ifdef HAVE_TELLDIR
     struct dir_data *dirp;
@@ -616,8 +597,7 @@ dir_tell(dir)
  *     d.read                   #=> ".."
  */
 static VALUE
-dir_seek(dir, pos)
-    VALUE dir, pos;
+dir_seek(VALUE dir, VALUE pos)
 {
     struct dir_data *dirp;
     off_t p = NUM2OFFT(pos);
@@ -646,8 +626,7 @@ dir_seek(dir, pos)
  *     d.read                   #=> ".."
  */
 static VALUE
-dir_set_pos(dir, pos)
-    VALUE dir, pos;
+dir_set_pos(VALUE dir, VALUE pos)
 {
     dir_seek(dir, pos);
     return pos;
@@ -665,8 +644,7 @@ dir_set_pos(dir, pos)
  *     d.read     #=> "."
  */
 static VALUE
-dir_rewind(dir)
-    VALUE dir;
+dir_rewind(VALUE dir)
 {
     struct dir_data *dirp;
 
@@ -689,8 +667,7 @@ dir_rewind(dir)
  *     d.close   #=> nil
  */
 static VALUE
-dir_close(dir)
-    VALUE dir;
+dir_close(VALUE dir)
 {
     struct dir_data *dirp;
 
@@ -702,8 +679,7 @@ dir_close(dir)
 }
 
 static void
-dir_chdir(path)
-    VALUE path;
+dir_chdir(VALUE path)
 {
     if (chdir(RSTRING(path)->ptr) < 0)
 	rb_sys_fail(RSTRING(path)->ptr);
@@ -718,8 +694,7 @@ struct chdir_data {
 };
 
 static VALUE
-chdir_yield(args)
-    struct chdir_data *args;
+chdir_yield(struct chdir_data *args)
 {
     dir_chdir(args->new_path);
     args->done = Qtrue;
@@ -730,8 +705,7 @@ chdir_yield(args)
 }
 
 static VALUE
-chdir_restore(args)
-    struct chdir_data *args;
+chdir_restore(struct chdir_data *args)
 {
     if (args->done) {
 	chdir_blocking--;
@@ -782,10 +756,7 @@ chdir_restore(args)
  *     /var/spool/mail
  */
 static VALUE
-dir_s_chdir(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+dir_s_chdir(int argc, VALUE *argv, VALUE obj)
 {
     VALUE path = Qnil;
 
@@ -814,7 +785,7 @@ dir_s_chdir(argc, argv, obj)
 	args.old_path = rb_tainted_str_new2(cwd); free(cwd);
 	args.new_path = path;
 	args.done = Qfalse;
-	return rb_ensure(chdir_yield, (VALUE)&args, chdir_restore, (VALUE)&args);
+	return rb_ensure((VALUE (*)(...))chdir_yield, (VALUE)&args, (VALUE (*)(...))chdir_restore, (VALUE)&args);
     }
     dir_chdir(path);
 
@@ -833,8 +804,7 @@ dir_s_chdir(argc, argv, obj)
  *     Dir.getwd           #=> "/tmp"
  */
 static VALUE
-dir_s_getwd(dir)
-    VALUE dir;
+dir_s_getwd(VALUE dir)
 {
     char *path;
     VALUE cwd;
@@ -849,8 +819,7 @@ dir_s_getwd(dir)
 
 static void check_dirname _((volatile VALUE *));
 static void
-check_dirname(dir)
-    volatile VALUE *dir;
+check_dirname(volatile VALUE *dir)
 {
     char *path, *pend;
 
@@ -872,8 +841,7 @@ check_dirname(dir)
  *  information.
  */
 static VALUE
-dir_s_chroot(dir, path)
-    VALUE dir, path;
+dir_s_chroot(VALUE dir, VALUE path)
 {
 #if defined(HAVE_CHROOT) && !defined(__CHECKER__)
     check_dirname(&path);
@@ -902,10 +870,7 @@ dir_s_chroot(dir, path)
  *
  */
 static VALUE
-dir_s_mkdir(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+dir_s_mkdir(int argc, VALUE *argv, VALUE obj)
 {
     VALUE path, vmode;
     int mode;
@@ -934,8 +899,7 @@ dir_s_mkdir(argc, argv, obj)
  *  <code>SystemCallError</code> if the directory isn't empty.
  */
 static VALUE
-dir_s_rmdir(obj, dir)
-    VALUE obj, dir;
+dir_s_rmdir(VALUE obj, VALUE dir)
 {
     check_dirname(&dir);
     if (rmdir(RSTRING(dir)->ptr) < 0)
@@ -945,8 +909,7 @@ dir_s_rmdir(obj, dir)
 }
 
 static void
-sys_warning_1(mesg)
-    const char* mesg;
+sys_warning_1(const char* mesg)
 {
     rb_sys_warning("%s", mesg);
 }
@@ -999,9 +962,7 @@ do_opendir(const char *path, int flags)
 
 /* Return nonzero if S has any special globbing chars in it.  */
 static int
-has_magic(s, flags)
-    const char *s;
-    int flags;
+has_magic(const char *s, int flags)
 {
     const int escape = !(flags & FNM_NOESCAPE);
     const int nocase = flags & FNM_CASEFOLD;
@@ -1070,8 +1031,7 @@ find_dirsep(const char *s, int flags)
 
 /* Remove escaping backslashes */
 static void
-remove_backslashes(p)
-    char *p;
+remove_backslashes(char *p)
 {
     char *t = p;
     char *s = p;
@@ -1210,8 +1170,7 @@ struct glob_args {
 static VALUE glob_func_caller _((VALUE));
 
 static VALUE
-glob_func_caller(val)
-    VALUE val;
+glob_func_caller(VALUE val)
 {
     struct glob_args *args = (struct glob_args *)val;
 
@@ -1224,16 +1183,7 @@ glob_func_caller(val)
 static int glob_helper _((const char *, int, enum answer, enum answer, struct glob_pattern **, struct glob_pattern **, int, ruby_glob_func *, VALUE));
 
 static int
-glob_helper(path, dirsep, exist, isdir, beg, end, flags, func, arg)
-    const char *path;
-    int dirsep; /* '/' should be placed before appending child entry's name to 'path'. */
-    enum answer exist; /* Does 'path' indicate an existing entry? */
-    enum answer isdir; /* Does 'path' indicate a directory or a symlink to a directory? */
-    struct glob_pattern **beg;
-    struct glob_pattern **end;
-    int flags;
-    ruby_glob_func *func;
-    VALUE arg;
+glob_helper(const char* path, int dirsep, answer exist, answer isdir, glob_pattern** beg, glob_pattern** end, int flags, int (*func)(const char*, VALUE), VALUE arg)
 {
     struct stat st;
     int status = 0;
@@ -1408,11 +1358,7 @@ glob_helper(path, dirsep, exist, isdir, beg, end, flags, func, arg)
 }
 
 static int
-ruby_glob0(path, flags, func, arg)
-    const char *path;
-    int flags;
-    ruby_glob_func *func;
-    VALUE arg;
+ruby_glob0(const char *path, int flags, ruby_glob_func *func, VALUE arg)
 {
     struct glob_pattern *list;
     const char *root, *start;
@@ -1447,11 +1393,7 @@ ruby_glob0(path, flags, func, arg)
 }
 
 int
-ruby_glob(path, flags, func, arg)
-    const char *path;
-    int flags;
-    ruby_glob_func *func;
-    VALUE arg;
+ruby_glob(const char *path, int flags, ruby_glob_func *func, VALUE arg)
 {
     return ruby_glob0(path, flags & ~GLOB_VERBOSE, func, arg);
 }
@@ -1459,9 +1401,7 @@ ruby_glob(path, flags, func, arg)
 static int rb_glob_caller _((const char *, VALUE));
 
 static int
-rb_glob_caller(path, a)
-    const char *path;
-    VALUE a;
+rb_glob_caller(const char *path, VALUE a)
 {
     int status;
     struct glob_args *args = (struct glob_args *)a;
@@ -1472,11 +1412,7 @@ rb_glob_caller(path, a)
 }
 
 static int
-rb_glob2(path, flags, func, arg)
-    const char *path;
-    int flags;
-    void (*func) _((const char *, VALUE));
-    VALUE arg;
+rb_glob2(const char *path, int flags, void (*func) _((const char *, VALUE)), VALUE arg)
 {
     struct glob_args args;
 
@@ -1491,10 +1427,7 @@ rb_glob2(path, flags, func, arg)
 }
 
 void
-rb_glob(path, func, arg)
-    const char *path;
-    void (*func) _((const char*, VALUE));
-    VALUE arg;
+rb_glob(const char *path, void (*func) _((const char*, VALUE)), VALUE arg)
 {
     int status = rb_glob2(path, 0, func, arg);
     if (status) GLOB_JUMP_TAG(status);
@@ -1502,19 +1435,13 @@ rb_glob(path, func, arg)
 
 static void push_pattern _((const char* path, VALUE ary));
 static void
-push_pattern(path, ary)
-    const char *path;
-    VALUE ary;
+push_pattern(const char *path, VALUE ary)
 {
     rb_ary_push(ary, rb_tainted_str_new2(path));
 }
 
 int
-ruby_brace_expand(str, flags, func, arg)
-    const char *str;
-    int flags;
-    ruby_glob_func *func;
-    VALUE arg;
+ruby_brace_expand(const char *str, int flags, ruby_glob_func *func, VALUE arg)
 {
     const int escape = !(flags & FNM_NOESCAPE);
     const char *p = str;
@@ -1577,9 +1504,7 @@ struct brace_args {
 
 static int glob_brace _((const char *, VALUE));
 static int
-glob_brace(path, val)
-    const char *path;
-    VALUE val;
+glob_brace(const char *path, VALUE val)
 {
     struct brace_args *arg = (struct brace_args *)val;
 
@@ -1587,11 +1512,7 @@ glob_brace(path, val)
 }
 
 static int
-ruby_brace_glob0(str, flags, func, arg)
-    const char *str;
-    int flags;
-    ruby_glob_func *func;
-    VALUE arg;
+ruby_brace_glob0(const char *str, int flags, ruby_glob_func *func, VALUE arg)
 {
     struct brace_args args;
 
@@ -1602,11 +1523,7 @@ ruby_brace_glob0(str, flags, func, arg)
 }
 
 int
-ruby_brace_glob(str, flags, func, arg)
-    const char *str;
-    int flags;
-    ruby_glob_func *func;
-    VALUE arg;
+ruby_brace_glob(const char *str, int flags, ruby_glob_func *func, VALUE arg)
 {
     return ruby_brace_glob0(str, flags & ~GLOB_VERBOSE, func, arg);
 }
@@ -1622,9 +1539,7 @@ push_glob(VALUE ary, const char *str, int flags)
 }
 
 static VALUE
-rb_push_glob(str, flags) /* '\0' is delimiter */
-    VALUE str;
-    int flags;
+rb_push_glob(VALUE str, int flags)
 {
     long offset = 0;
     VALUE ary;
@@ -1649,10 +1564,7 @@ rb_push_glob(str, flags) /* '\0' is delimiter */
 }
 
 static VALUE
-dir_globs(argc, argv, flags)
-    long argc;
-    VALUE *argv;
-    int flags;
+dir_globs(long argc, VALUE *argv, int flags)
 {
     VALUE ary = rb_ary_new();
     long i;
@@ -1748,10 +1660,7 @@ dir_s_aref(int argc, VALUE *argv, VALUE obj)
  *     Dir.glob(librbfiles)                #=> ["lib/song.rb"]
  */
 static VALUE
-dir_s_glob(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+dir_s_glob(int argc, VALUE *argv, VALUE obj)
 {
     VALUE str, rflags, ary;
     int flags;
@@ -1778,8 +1687,7 @@ dir_s_glob(argc, argv, obj)
 }
 
 static VALUE
-dir_open_dir(path)
-    VALUE path;
+dir_open_dir(VALUE path)
 {
     VALUE dir = rb_funcall(rb_cDir, rb_intern("open"), 1, path);
 
@@ -1810,14 +1718,13 @@ dir_open_dir(path)
  *
  */
 static VALUE
-dir_foreach(io, dirname)
-    VALUE io, dirname;
+dir_foreach(VALUE io, VALUE dirname)
 {
     VALUE dir;
 
     RETURN_ENUMERATOR(io, 1, &dirname);
     dir = dir_open_dir(dirname);
-    rb_ensure(dir_each, dir, dir_close, dir);
+    rb_ensure((VALUE (*)(...))dir_each, dir, (VALUE (*)(...))dir_close, dir);
     return Qnil;
 }
 
@@ -1833,13 +1740,12 @@ dir_foreach(io, dirname)
  *
  */
 static VALUE
-dir_entries(io, dirname)
-    VALUE io, dirname;
+dir_entries(VALUE io, VALUE dirname)
 {
     VALUE dir;
 
     dir = dir_open_dir(dirname);
-    return rb_ensure(rb_Array, dir, dir_close, dir);
+    return rb_ensure((VALUE (*)(...))rb_Array, dir, (VALUE (*)(...))dir_close, dir);
 }
 
 /*
@@ -1924,10 +1830,7 @@ dir_entries(io, dirname)
  *     File.fnmatch(pattern, 'a/.b/c/foo', File::FNM_PATHNAME | File::FNM_DOTMATCH) #=> true
  */
 static VALUE
-file_s_fnmatch(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+file_s_fnmatch(int argc, VALUE *argv, VALUE obj)
 {
     VALUE pattern, path;
     VALUE rflags;
@@ -1966,36 +1869,36 @@ Init_Dir()
     rb_include_module(rb_cDir, rb_mEnumerable);
 
     rb_define_alloc_func(rb_cDir, dir_s_alloc);
-    rb_define_singleton_method(rb_cDir, "open", dir_s_open, 1);
-    rb_define_singleton_method(rb_cDir, "foreach", dir_foreach, 1);
-    rb_define_singleton_method(rb_cDir, "entries", dir_entries, 1);
+    rb_define_singleton_method(rb_cDir, "open", (VALUE (*)(...))dir_s_open, 1);
+    rb_define_singleton_method(rb_cDir, "foreach", (VALUE (*)(...))dir_foreach, 1);
+    rb_define_singleton_method(rb_cDir, "entries", (VALUE (*)(...))dir_entries, 1);
 
-    rb_define_method(rb_cDir,"initialize", dir_initialize, 1);
-    rb_define_method(rb_cDir,"path", dir_path, 0);
-    rb_define_method(rb_cDir,"inspect", dir_inspect, 0);
-    rb_define_method(rb_cDir,"read", dir_read, 0);
-    rb_define_method(rb_cDir,"each", dir_each, 0);
-    rb_define_method(rb_cDir,"rewind", dir_rewind, 0);
-    rb_define_method(rb_cDir,"tell", dir_tell, 0);
-    rb_define_method(rb_cDir,"seek", dir_seek, 1);
-    rb_define_method(rb_cDir,"pos", dir_tell, 0);
-    rb_define_method(rb_cDir,"pos=", dir_set_pos, 1);
-    rb_define_method(rb_cDir,"close", dir_close, 0);
+    rb_define_method(rb_cDir,"initialize", (VALUE (*)(...))dir_initialize, 1);
+    rb_define_method(rb_cDir,"path", (VALUE (*)(...))dir_path, 0);
+    rb_define_method(rb_cDir,"inspect", (VALUE (*)(...))dir_inspect, 0);
+    rb_define_method(rb_cDir,"read", (VALUE (*)(...))dir_read, 0);
+    rb_define_method(rb_cDir,"each", (VALUE (*)(...))dir_each, 0);
+    rb_define_method(rb_cDir,"rewind", (VALUE (*)(...))dir_rewind, 0);
+    rb_define_method(rb_cDir,"tell", (VALUE (*)(...))dir_tell, 0);
+    rb_define_method(rb_cDir,"seek", (VALUE (*)(...))dir_seek, 1);
+    rb_define_method(rb_cDir,"pos", (VALUE (*)(...))dir_tell, 0);
+    rb_define_method(rb_cDir,"pos=", (VALUE (*)(...))dir_set_pos, 1);
+    rb_define_method(rb_cDir,"close", (VALUE (*)(...))dir_close, 0);
 
-    rb_define_singleton_method(rb_cDir,"chdir", dir_s_chdir, -1);
-    rb_define_singleton_method(rb_cDir,"getwd", dir_s_getwd, 0);
-    rb_define_singleton_method(rb_cDir,"pwd", dir_s_getwd, 0);
-    rb_define_singleton_method(rb_cDir,"chroot", dir_s_chroot, 1);
-    rb_define_singleton_method(rb_cDir,"mkdir", dir_s_mkdir, -1);
-    rb_define_singleton_method(rb_cDir,"rmdir", dir_s_rmdir, 1);
-    rb_define_singleton_method(rb_cDir,"delete", dir_s_rmdir, 1);
-    rb_define_singleton_method(rb_cDir,"unlink", dir_s_rmdir, 1);
+    rb_define_singleton_method(rb_cDir,"chdir", (VALUE (*)(...))dir_s_chdir, -1);
+    rb_define_singleton_method(rb_cDir,"getwd", (VALUE (*)(...))dir_s_getwd, 0);
+    rb_define_singleton_method(rb_cDir,"pwd", (VALUE (*)(...))dir_s_getwd, 0);
+    rb_define_singleton_method(rb_cDir,"chroot", (VALUE (*)(...))dir_s_chroot, 1);
+    rb_define_singleton_method(rb_cDir,"mkdir", (VALUE (*)(...))dir_s_mkdir, -1);
+    rb_define_singleton_method(rb_cDir,"rmdir", (VALUE (*)(...))dir_s_rmdir, 1);
+    rb_define_singleton_method(rb_cDir,"delete", (VALUE (*)(...))dir_s_rmdir, 1);
+    rb_define_singleton_method(rb_cDir,"unlink", (VALUE (*)(...))dir_s_rmdir, 1);
 
-    rb_define_singleton_method(rb_cDir,"glob", dir_s_glob, -1);
-    rb_define_singleton_method(rb_cDir,"[]", dir_s_aref, -1);
+    rb_define_singleton_method(rb_cDir,"glob", (VALUE (*)(...))dir_s_glob, -1);
+    rb_define_singleton_method(rb_cDir,"[]", (VALUE (*)(...))dir_s_aref, -1);
 
-    rb_define_singleton_method(rb_cFile,"fnmatch", file_s_fnmatch, -1);
-    rb_define_singleton_method(rb_cFile,"fnmatch?", file_s_fnmatch, -1);
+    rb_define_singleton_method(rb_cFile,"fnmatch", (VALUE (*)(...))file_s_fnmatch, -1);
+    rb_define_singleton_method(rb_cFile,"fnmatch?", (VALUE (*)(...))file_s_fnmatch, -1);
 
     rb_file_const("FNM_NOESCAPE", INT2FIX(FNM_NOESCAPE));
     rb_file_const("FNM_PATHNAME", INT2FIX(FNM_PATHNAME));

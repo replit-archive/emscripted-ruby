@@ -1,3 +1,4 @@
+extern "C" {
 /************************************************
 
   missing.h - prototype for *.c in ./missing, and
@@ -140,3 +141,4 @@ extern int vsnprintf _((char *, size_t n, char const *, va_list));
 #endif
 
 #endif /* MISSING_H */
+}

@@ -1,3 +1,4 @@
+extern "C" {
 /**********************************************************************
 
   intern.h -
@@ -526,3 +527,4 @@ VALUE rb_mod_remove_cvar _((VALUE, VALUE));
 /* version.c */
 void ruby_show_version _((void));
 void ruby_show_copyright _((void));
+}

@@ -37,16 +37,14 @@ static void time_free _((void *));
 static VALUE time_utc_offset _((VALUE));
 
 static void
-time_free(tobj)
-    void *tobj;
+time_free(void *tobj)
 {
     if (tobj) free(tobj);
 }
 
 static VALUE time_s_alloc _((VALUE));
 static VALUE
-time_s_alloc(klass)
-    VALUE klass;
+time_s_alloc(VALUE klass)
 {
     VALUE obj;
     struct time_object *tobj;
@@ -60,8 +58,7 @@ time_s_alloc(klass)
 }
 
 static void
-time_modify(time)
-    VALUE time;
+time_modify(VALUE time)
 {
     rb_check_frozen(time);
     if (!OBJ_TAINTED(time) && rb_safe_level() >= 4)
@@ -91,8 +88,7 @@ time_modify(time)
  */
 
 static VALUE
-time_init(time)
-    VALUE time;
+time_init(VALUE time)
 {
     struct time_object *tobj;
 
@@ -112,8 +108,7 @@ time_init(time)
 #define NMOD(x,y) ((y)-(-((x)+1)%(y))-1)
 
 static void
-time_overflow_p(secp, usecp)
-    time_t *secp, *usecp;
+time_overflow_p(time_t *secp, time_t *usecp)
 {
     time_t tmp, sec = *secp, usec = *usecp;
 
@@ -143,9 +138,7 @@ time_overflow_p(secp, usecp)
 
 static VALUE time_new_internal _((VALUE, time_t, time_t));
 static VALUE
-time_new_internal(klass, sec, usec)
-    VALUE klass;
-    time_t sec, usec;
+time_new_internal(VALUE klass, time_t sec, time_t usec)
 {
     VALUE time = time_s_alloc(klass);
     struct time_object *tobj;
@@ -159,16 +152,13 @@ time_new_internal(klass, sec, usec)
 }
 
 VALUE
-rb_time_new(sec, usec)
-    time_t sec, usec;
+rb_time_new(time_t sec, time_t usec)
 {
     return time_new_internal(rb_cTime, sec, usec);
 }
 
 static struct timeval
-time_timeval(time, interval)
-    VALUE time;
-    int interval;
+time_timeval(VALUE time, int interval)
 {
     struct timeval t;
     const char *tstr = interval ? "time interval" : "time";
@@ -216,15 +206,13 @@ time_timeval(time, interval)
 }
 
 struct timeval
-rb_time_interval(time)
-    VALUE time;
+rb_time_interval(VALUE time)
 {
     return time_timeval(time, Qtrue);
 }
 
-struct timeval
-rb_time_timeval(time)
-    VALUE time;
+extern "C" struct timeval
+rb_time_timeval(VALUE time)
 {
     struct time_object *tobj;
     struct timeval t;
@@ -253,10 +241,7 @@ rb_time_timeval(time)
  */
 
 static VALUE
-time_s_at(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+time_s_at(int argc, VALUE *argv, VALUE klass)
 {
     struct timeval tv;
     VALUE time, t;
@@ -285,8 +270,7 @@ static const char months[][4] = {
 };
 
 static long
-obj2long(obj)
-    VALUE obj;
+obj2long(VALUE obj)
 {
     if (TYPE(obj) == T_STRING) {
 	obj = rb_str_to_inum(obj, 10, Qfalse);
@@ -296,11 +280,7 @@ obj2long(obj)
 }
 
 static void
-time_arg(argc, argv, tm, usec)
-    int argc;
-    VALUE *argv;
-    struct tm *tm;
-    time_t *usec;
+time_arg(int argc, VALUE *argv, struct tm *tm, time_t *usec)
 {
     VALUE v[8];
     int i;
@@ -404,8 +384,7 @@ static VALUE time_localtime _((VALUE));
 static VALUE time_get_tm _((VALUE, int));
 
 static int
-leap_year_p(y)
-    long y;
+leap_year_p(long y)
 {
   return ((y % 4 == 0) && (y % 100 != 0)) || (y % 400 == 0);
 }
@@ -413,8 +392,7 @@ leap_year_p(y)
 #define DIV(n,d) ((n)<0 ? NDIV((n),(d)) : (n)/(d))
 
 static time_t
-timegm_noleapsecond(tm)
-    struct tm *tm;
+timegm_noleapsecond(struct tm *tm)
 {
     static int common_year_yday_offset[] = {
         -1,
@@ -469,9 +447,7 @@ timegm_noleapsecond(tm)
 }
 
 static int
-tmcmp(a, b)
-    struct tm *a;
-    struct tm *b;
+tmcmp(struct tm *a, struct tm *b)
 {
     if (a->tm_year != b->tm_year)
         return a->tm_year < b->tm_year ? -1 : 1;
@@ -500,9 +476,7 @@ typedef unsigned LONG_LONG unsigned_time_t;
 #endif
 
 static time_t
-search_time_t(tptr, utc_p)
-    struct tm *tptr;
-    int utc_p;
+search_time_t(struct tm *tptr, int utc_p)
 {
     time_t guess, guess_lo, guess_hi;
     struct tm *tm, tm_lo, tm_hi;
@@ -754,9 +728,7 @@ search_time_t(tptr, utc_p)
 }
 
 static time_t
-make_time_t(tptr, utc_p)
-    struct tm *tptr;
-    int utc_p;
+make_time_t(struct tm *tptr, int utc_p)
 {
     time_t t;
     struct tm *tmp, buf;
@@ -798,11 +770,7 @@ make_time_t(tptr, utc_p)
 }
 
 static VALUE
-time_utc_or_local(argc, argv, utc_p, klass)
-    int argc;
-    VALUE *argv;
-    int utc_p;
-    VALUE klass;
+time_utc_or_local(int argc, VALUE *argv, int utc_p, VALUE klass)
 {
     struct tm tm;
     VALUE time;
@@ -836,10 +804,7 @@ time_utc_or_local(argc, argv, utc_p, klass)
  *     Time.gm(2000,"jan",1,20,15,1)   #=> Sat Jan 01 20:15:01 UTC 2000
  */
 static VALUE
-time_s_mkutc(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+time_s_mkutc(int argc, VALUE *argv, VALUE klass)
 {
     return time_utc_or_local(argc, argv, Qtrue, klass);
 }
@@ -858,10 +823,7 @@ time_s_mkutc(argc, argv, klass)
  */
 
 static VALUE
-time_s_mktime(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+time_s_mktime(int argc, VALUE *argv, VALUE klass)
 {
     return time_utc_or_local(argc, argv, Qfalse, klass);
 }
@@ -880,8 +842,7 @@ time_s_mktime(argc, argv, klass)
  */
 
 static VALUE
-time_to_i(time)
-    VALUE time;
+time_to_i(VALUE time)
 {
     struct time_object *tobj;
 
@@ -902,8 +863,7 @@ time_to_i(time)
  */
 
 static VALUE
-time_to_f(time)
-    VALUE time;
+time_to_f(VALUE time)
 {
     struct time_object *tobj;
 
@@ -924,8 +884,7 @@ time_to_f(time)
  */
 
 static VALUE
-time_usec(time)
-    VALUE time;
+time_usec(VALUE time)
 {
     struct time_object *tobj;
 
@@ -950,8 +909,7 @@ time_usec(time)
  */
 
 static VALUE
-time_cmp(time1, time2)
-    VALUE time1, time2;
+time_cmp(VALUE time1, VALUE time2)
 {
     struct time_object *tobj1, *tobj2;
 
@@ -980,8 +938,7 @@ time_cmp(time1, time2)
  */
 
 static VALUE
-time_eql(time1, time2)
-    VALUE time1, time2;
+time_eql(VALUE time1, VALUE time2)
 {
     struct time_object *tobj1, *tobj2;
 
@@ -1015,8 +972,7 @@ time_eql(time1, time2)
  */
 
 static VALUE
-time_utc_p(time)
-    VALUE time;
+time_utc_p(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1033,8 +989,7 @@ time_utc_p(time)
  */
 
 static VALUE
-time_hash(time)
-    VALUE time;
+time_hash(VALUE time)
 {
     struct time_object *tobj;
     long hash;
@@ -1046,8 +1001,7 @@ time_hash(time)
 
 /* :nodoc: */
 static VALUE
-time_init_copy(copy, time)
-    VALUE copy, time;
+time_init_copy(VALUE copy, VALUE time)
 {
     struct time_object *tobj, *tcopy;
 
@@ -1064,8 +1018,7 @@ time_init_copy(copy, time)
 }
 
 static VALUE
-time_dup(time)
-    VALUE time;
+time_dup(VALUE time)
 {
     VALUE dup = time_s_alloc(CLASS_OF(time));
     time_init_copy(dup, time);
@@ -1086,8 +1039,7 @@ time_dup(time)
  */
 
 static VALUE
-time_localtime(time)
-    VALUE time;
+time_localtime(VALUE time)
 {
     struct time_object *tobj;
     struct tm *tm_tmp;
@@ -1130,8 +1082,7 @@ time_localtime(time)
  */
 
 static VALUE
-time_gmtime(time)
-    VALUE time;
+time_gmtime(VALUE time)
 {
     struct time_object *tobj;
     struct tm *tm_tmp;
@@ -1170,8 +1121,7 @@ time_gmtime(time)
  */
 
 static VALUE
-time_getlocaltime(time)
-    VALUE time;
+time_getlocaltime(VALUE time)
 {
     return time_localtime(time_dup(time));
 }
@@ -1192,16 +1142,13 @@ time_getlocaltime(time)
  */
 
 static VALUE
-time_getgmtime(time)
-    VALUE time;
+time_getgmtime(VALUE time)
 {
     return time_gmtime(time_dup(time));
 }
 
 static VALUE
-time_get_tm(time, gmt)
-    VALUE time;
-    int gmt;
+time_get_tm(VALUE time, int gmt)
 {
     if (gmt) return time_gmtime(time);
     return time_localtime(time);
@@ -1218,8 +1165,7 @@ time_get_tm(time, gmt)
  */
 
 static VALUE
-time_asctime(time)
-    VALUE time;
+time_asctime(VALUE time)
 {
     struct time_object *tobj;
     char *s;
@@ -1248,8 +1194,7 @@ time_asctime(time)
  */
 
 static VALUE
-time_to_s(time)
-    VALUE time;
+time_to_s(VALUE time)
 {
     struct time_object *tobj;
     char buf[128];
@@ -1284,10 +1229,7 @@ time_to_s(time)
 }
 
 static VALUE
-time_add(tobj, offset, sign)
-    struct time_object *tobj;
-    VALUE offset;
-    int sign;
+time_add(struct time_object *tobj, VALUE offset, int sign)
 {
     double v = NUM2DBL(offset);
     double f, d;
@@ -1338,8 +1280,7 @@ time_add(tobj, offset, sign)
  */
 
 static VALUE
-time_plus(time1, time2)
-    VALUE time1, time2;
+time_plus(VALUE time1, VALUE time2)
 {
     struct time_object *tobj;
     GetTimeval(time1, tobj);
@@ -1366,8 +1307,7 @@ time_plus(time1, time2)
  */
 
 static VALUE
-time_minus(time1, time2)
-    VALUE time1, time2;
+time_minus(VALUE time1, VALUE time2)
 {
     struct time_object *tobj;
 
@@ -1394,8 +1334,7 @@ time_minus(time1, time2)
  */
 
 static VALUE
-time_succ(time)
-    VALUE time;
+time_succ(VALUE time)
 {
     struct time_object *tobj;
     int gmt;
@@ -1422,8 +1361,7 @@ time_succ(time)
  */
 
 static VALUE
-time_sec(time)
-    VALUE time;
+time_sec(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1445,8 +1383,7 @@ time_sec(time)
  */
 
 static VALUE
-time_min(time)
-    VALUE time;
+time_min(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1468,8 +1405,7 @@ time_min(time)
  */
 
 static VALUE
-time_hour(time)
-    VALUE time;
+time_hour(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1493,8 +1429,7 @@ time_hour(time)
  */
 
 static VALUE
-time_mday(time)
-    VALUE time;
+time_mday(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1518,8 +1453,7 @@ time_mday(time)
  */
 
 static VALUE
-time_mon(time)
-    VALUE time;
+time_mon(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1541,8 +1475,7 @@ time_mon(time)
  */
 
 static VALUE
-time_year(time)
-    VALUE time;
+time_year(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1565,8 +1498,7 @@ time_year(time)
  */
 
 static VALUE
-time_wday(time)
-    VALUE time;
+time_wday(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1588,8 +1520,7 @@ time_wday(time)
  */
 
 static VALUE
-time_yday(time)
-    VALUE time;
+time_yday(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1615,8 +1546,7 @@ time_yday(time)
  */
 
 static VALUE
-time_isdst(time)
-    VALUE time;
+time_isdst(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1641,8 +1571,7 @@ time_isdst(time)
  */
 
 static VALUE
-time_zone(time)
-    VALUE time;
+time_zone(VALUE time)
 {
     struct time_object *tobj;
 #if !defined(HAVE_TM_ZONE) && (!defined(HAVE_TZNAME) || !defined(HAVE_DAYLIGHT))
@@ -1684,8 +1613,7 @@ time_zone(time)
  */
 
 static VALUE
-time_utc_offset(time)
-    VALUE time;
+time_utc_offset(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1741,8 +1669,7 @@ time_utc_offset(time)
  */
 
 static VALUE
-time_to_a(time)
-    VALUE time;
+time_to_a(VALUE time)
 {
     struct time_object *tobj;
 
@@ -1765,10 +1692,7 @@ time_to_a(time)
 
 #define SMALLBUF 100
 static int
-rb_strftime(buf, format, time)
-    char **buf;
-    const char *format;
-    struct tm *time;
+rb_strftime(char **buf, const char *format, struct tm *time)
 {
     int size, len, flen;
 
@@ -1839,8 +1763,7 @@ rb_strftime(buf, format, time)
  */
 
 static VALUE
-time_strftime(time, format)
-    VALUE time, format;
+time_strftime(VALUE time, VALUE format)
 {
     struct time_object *tobj;
     char buffer[SMALLBUF], *buf = buffer;
@@ -1893,8 +1816,7 @@ time_strftime(time, format)
  */
 
 static VALUE
-time_s_times(obj)
-    VALUE obj;
+time_s_times(VALUE obj)
 {
     rb_warn("obsolete method Time::times; use Process::times");
     return rb_proc_times(obj);
@@ -1905,8 +1827,7 @@ time_s_times(obj)
  */
 
 static VALUE
-time_mdump(time)
-    VALUE time;
+time_mdump(VALUE time)
 {
     struct time_object *tobj;
     struct tm *tm;
@@ -1952,10 +1873,7 @@ time_mdump(time)
  */
 
 static VALUE
-time_dump(argc, argv, time)
-    int argc;
-    VALUE *argv;
-    VALUE time;
+time_dump(int argc, VALUE *argv, VALUE time)
 {
     VALUE str;
 
@@ -1974,8 +1892,7 @@ time_dump(argc, argv, time)
  */
 
 static VALUE
-time_mload(time, str)
-    VALUE time, str;
+time_mload(VALUE time, VALUE str)
 {
     struct time_object *tobj;
     unsigned long p, s;
@@ -2033,8 +1950,7 @@ time_mload(time, str)
  */
 
 static VALUE
-time_load(klass, str)
-    VALUE klass, str;
+time_load(VALUE klass, VALUE str)
 {
     VALUE time = time_s_alloc(klass);
 

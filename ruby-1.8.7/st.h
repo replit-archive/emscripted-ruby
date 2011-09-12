@@ -1,3 +1,4 @@
+extern "C" {
 /* This is a public domain general purpose hash table package written by Peter Moore @ UCB. */
 
 /* @(#) st.h 5.1 89/12/14 */
@@ -19,8 +20,8 @@ typedef unsigned LONG_LONG st_data_t;
 typedef struct st_table st_table;
 
 struct st_hash_type {
-    int (*compare)();
-    int (*hash)();
+    int (*compare)(...);
+    int (*hash)(...);
 };
 
 struct st_table {
@@ -70,3 +71,4 @@ st_table *st_copy _((st_table *));
 int st_strhash();
 
 #endif /* ST_INCLUDED */
+}

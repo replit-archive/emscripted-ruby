@@ -35,8 +35,7 @@ struct enumerator {
 
 static void enumerator_mark _((void *));
 static void
-enumerator_mark(p)
-    void *p;
+enumerator_mark(void *p)
 {
     struct enumerator *ptr = p;
     rb_gc_mark(ptr->obj);
@@ -44,8 +43,7 @@ enumerator_mark(p)
 }
 
 static struct enumerator *
-enumerator_ptr(obj)
-    VALUE obj;
+enumerator_ptr(VALUE obj)
 {
     struct enumerator *ptr;
 
@@ -81,10 +79,7 @@ enumerator_ptr(obj)
  *
  */
 static VALUE
-obj_to_enum(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+obj_to_enum(int argc, VALUE *argv, VALUE obj)
 {
     VALUE meth = sym_each;
 
@@ -96,9 +91,7 @@ obj_to_enum(argc, argv, obj)
 }
 
 static VALUE
-each_slice_i(val, memo)
-    VALUE val;
-    VALUE *memo;
+each_slice_i(VALUE val, VALUE *memo)
 {
     VALUE ary = memo[0];
     VALUE v = Qnil;
@@ -132,8 +125,7 @@ each_slice_i(val, memo)
  *
  */
 static VALUE
-enum_each_slice(obj, n)
-    VALUE obj, n;
+enum_each_slice(VALUE obj, VALUE n)
 {
     long size = NUM2LONG(n);
     VALUE args[2], ary;
@@ -152,9 +144,7 @@ enum_each_slice(obj, n)
 }
 
 static VALUE
-each_cons_i(val, memo)
-    VALUE val;
-    VALUE *memo;
+each_cons_i(VALUE val, VALUE *memo)
 {
     VALUE ary = memo[0];
     VALUE v = Qnil;
@@ -192,8 +182,7 @@ each_cons_i(val, memo)
  *
  */
 static VALUE
-enum_each_cons(obj, n)
-    VALUE obj, n;
+enum_each_cons(VALUE obj, VALUE n)
 {
     long size = NUM2LONG(n);
     VALUE args[2];
@@ -210,8 +199,7 @@ enum_each_cons(obj, n)
 
 static VALUE enumerator_allocate _((VALUE));
 static VALUE
-enumerator_allocate(klass)
-    VALUE klass;
+enumerator_allocate(VALUE klass)
 {
     struct enumerator *ptr;
     return Data_Make_Struct(klass, struct enumerator,
@@ -220,20 +208,13 @@ enumerator_allocate(klass)
 
 static VALUE enumerator_each_i _((VALUE, VALUE));
 static VALUE
-enumerator_each_i(v, enum_obj)
-    VALUE v;
-    VALUE enum_obj;
+enumerator_each_i(VALUE v, VALUE enum_obj)
 {
     return rb_yield(v);
 }
 
 static VALUE
-enumerator_init(enum_obj, obj, meth, argc, argv)
-    VALUE enum_obj;
-    VALUE obj;
-    VALUE meth;
-    int argc;
-    VALUE *argv;
+enumerator_init(VALUE enum_obj, VALUE obj, VALUE meth, int argc, VALUE *argv)
 {
     struct enumerator *ptr = enumerator_ptr(enum_obj);
 
@@ -257,10 +238,7 @@ enumerator_init(enum_obj, obj, meth, argc, argv)
  *  instead.
  */
 static VALUE
-enumerator_initialize(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+enumerator_initialize(int argc, VALUE *argv, VALUE obj)
 {
     VALUE recv, meth = sym_each;
 
@@ -276,9 +254,7 @@ enumerator_initialize(argc, argv, obj)
 
 /* :nodoc: */
 static VALUE
-enumerator_init_copy(obj, orig)
-    VALUE obj;
-    VALUE orig;
+enumerator_init_copy(VALUE obj, VALUE orig)
 {
     struct enumerator *ptr0, *ptr1;
 
@@ -294,11 +270,7 @@ enumerator_init_copy(obj, orig)
 }
 
 VALUE
-rb_enumeratorize(obj, meth, argc, argv)
-    VALUE obj;
-    VALUE meth;
-    int argc;
-    VALUE *argv;
+rb_enumeratorize(VALUE obj, VALUE meth, int argc, VALUE *argv)
 {
     return enumerator_init(enumerator_allocate(rb_cEnumerator), obj, meth, argc, argv);
 }
@@ -312,8 +284,7 @@ rb_enumeratorize(obj, meth, argc, argv)
  *
  */
 static VALUE
-enumerator_each(obj)
-    VALUE obj;
+enumerator_each(VALUE obj)
 {
     struct enumerator *e;
     int argc = 0;
@@ -329,9 +300,7 @@ enumerator_each(obj)
 }
 
 static VALUE
-enumerator_with_index_i(val, memo)
-    VALUE val;
-    VALUE *memo;
+enumerator_with_index_i(VALUE val, VALUE *memo)
 {
     val = rb_yield_values(2, val, INT2FIX(*memo));
     ++*memo;
@@ -348,8 +317,7 @@ enumerator_with_index_i(val, memo)
  *
  */
 static VALUE
-enumerator_with_index(obj)
-    VALUE obj;
+enumerator_with_index(VALUE obj)
 {
     struct enumerator *e = enumerator_ptr(obj);
     VALUE memo = 0;
@@ -382,8 +350,7 @@ enumerator_with_index(obj)
  */
 
 static VALUE
-enumerator_next(obj)
-    VALUE obj;
+enumerator_next(VALUE obj)
 {
     rb_require("generator");
     return rb_funcall(obj, rb_intern("next"), 0, 0);
@@ -397,8 +364,7 @@ enumerator_next(obj)
  */
 
 static VALUE
-enumerator_rewind(obj)
-    VALUE obj;
+enumerator_rewind(VALUE obj)
 {
     rb_require("generator");
     return rb_funcall(obj, rb_intern("rewind"), 0, 0);

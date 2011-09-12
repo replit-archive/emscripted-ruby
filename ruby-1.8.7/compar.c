@@ -17,8 +17,7 @@ VALUE rb_mComparable;
 static ID cmp;
 
 int
-rb_cmpint(val, a, b)
-    VALUE val, a, b;
+rb_cmpint(VALUE val, VALUE a, VALUE b)
 {
     if (NIL_P(val)) {
 	rb_cmperr(a, b);
@@ -34,8 +33,7 @@ rb_cmpint(val, a, b)
 }
 
 void
-rb_cmperr(x, y)
-    VALUE x, y;
+rb_cmperr(VALUE x, VALUE y)
 {
     const char *classname;
 
@@ -53,8 +51,7 @@ rb_cmperr(x, y)
 #define cmperr() (rb_cmperr(x, y), Qnil)
 
 static VALUE
-cmp_eq(a)
-    VALUE *a;
+cmp_eq(VALUE *a)
 {
     VALUE c = rb_funcall(a[0], cmp, 1, a[1]);
 
@@ -79,15 +76,14 @@ cmp_failed()
  */
 
 static VALUE
-cmp_equal(x, y)
-    VALUE x, y;
+cmp_equal(VALUE x, VALUE y)
 {
     VALUE a[2];
 
     if (x == y) return Qtrue;
 
     a[0] = x; a[1] = y;
-    return rb_rescue(cmp_eq, (VALUE)a, cmp_failed, 0);
+    return rb_rescue((VALUE (*)(...))cmp_eq, (VALUE)a, (VALUE (*)(...))cmp_failed, 0);
 }
 
 /*
@@ -99,8 +95,7 @@ cmp_equal(x, y)
  */
 
 static VALUE
-cmp_gt(x, y)
-    VALUE x, y;
+cmp_gt(VALUE x, VALUE y)
 {
     VALUE c = rb_funcall(x, cmp, 1, y);
 
@@ -118,8 +113,7 @@ cmp_gt(x, y)
  */
 
 static VALUE
-cmp_ge(x, y)
-    VALUE x, y;
+cmp_ge(VALUE x, VALUE y)
 {
     VALUE c = rb_funcall(x, cmp, 1, y);
 
@@ -137,8 +131,7 @@ cmp_ge(x, y)
  */
 
 static VALUE
-cmp_lt(x, y)
-    VALUE x, y;
+cmp_lt(VALUE x, VALUE y)
 {
     VALUE c = rb_funcall(x, cmp, 1, y);
 
@@ -157,8 +150,7 @@ cmp_lt(x, y)
  */
 
 static VALUE
-cmp_le(x, y)
-    VALUE x, y;
+cmp_le(VALUE x, VALUE y)
 {
     VALUE c = rb_funcall(x, cmp, 1, y);
 
@@ -183,8 +175,7 @@ cmp_le(x, y)
  */
 
 static VALUE
-cmp_between(x, min, max)
-    VALUE x, min, max;
+cmp_between(VALUE x, VALUE min, VALUE max)
 {
     if (RTEST(cmp_lt(x, min))) return Qfalse;
     if (RTEST(cmp_gt(x, max))) return Qfalse;
@@ -232,12 +223,12 @@ void
 Init_Comparable()
 {
     rb_mComparable = rb_define_module("Comparable");
-    rb_define_method(rb_mComparable, "==", cmp_equal, 1);
-    rb_define_method(rb_mComparable, ">", cmp_gt, 1);
-    rb_define_method(rb_mComparable, ">=", cmp_ge, 1);
-    rb_define_method(rb_mComparable, "<", cmp_lt, 1);
-    rb_define_method(rb_mComparable, "<=", cmp_le, 1);
-    rb_define_method(rb_mComparable, "between?", cmp_between, 2);
+    rb_define_method(rb_mComparable, "==", (VALUE (*)(...))cmp_equal, 1);
+    rb_define_method(rb_mComparable, ">", (VALUE (*)(...))cmp_gt, 1);
+    rb_define_method(rb_mComparable, ">=", (VALUE (*)(...))cmp_ge, 1);
+    rb_define_method(rb_mComparable, "<", (VALUE (*)(...))cmp_lt, 1);
+    rb_define_method(rb_mComparable, "<=", (VALUE (*)(...))cmp_le, 1);
+    rb_define_method(rb_mComparable, "between?", (VALUE (*)(...))cmp_between, 2);
 
     cmp = rb_intern("<=>");
 }

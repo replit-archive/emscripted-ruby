@@ -43,8 +43,7 @@ static ID id_eq, id_eql, id_inspect, id_init_copy;
  */
 
 VALUE
-rb_equal(obj1, obj2)
-    VALUE obj1, obj2;
+rb_equal(VALUE obj1, VALUE obj2)
 {
     VALUE result;
 
@@ -55,8 +54,7 @@ rb_equal(obj1, obj2)
 }
 
 int
-rb_eql(obj1, obj2)
-    VALUE obj1, obj2;
+rb_eql(VALUE obj1, VALUE obj2)
 {
     return RTEST(rb_funcall(obj1, id_eql, 1, obj2));
 }
@@ -91,8 +89,7 @@ rb_eql(obj1, obj2)
  */
 
 static VALUE
-rb_obj_equal(obj1, obj2)
-    VALUE obj1, obj2;
+rb_obj_equal(VALUE obj1, VALUE obj2)
 {
     if (obj1 == obj2) return Qtrue;
     return Qfalse;
@@ -106,16 +103,14 @@ rb_obj_equal(obj1, obj2)
  */
 
 VALUE
-rb_obj_id_obsolete(obj)
-    VALUE obj;
+rb_obj_id_obsolete(VALUE obj)
 {
     rb_warn("Object#id will be deprecated; use Object#object_id");
     return rb_obj_id(obj);
 }
 
 VALUE
-rb_class_real(cl)
-    VALUE cl;
+rb_class_real(VALUE cl)
 {
     while (FL_TEST(cl, FL_SINGLETON) || TYPE(cl) == T_ICLASS) {
 	cl = RCLASS(cl)->super;
@@ -131,8 +126,7 @@ rb_class_real(cl)
  */
 
 VALUE
-rb_obj_type(obj)
-    VALUE obj;
+rb_obj_type(VALUE obj)
 {
     rb_warn("Object#type is deprecated; use Object#class");
     return rb_class_real(CLASS_OF(obj));
@@ -154,15 +148,13 @@ rb_obj_type(obj)
  */
 
 VALUE
-rb_obj_class(obj)
-    VALUE obj;
+rb_obj_class(VALUE obj)
 {
     return rb_class_real(CLASS_OF(obj));
 }
 
 static void
-init_copy(dest, obj)
-    VALUE dest, obj;
+init_copy(VALUE dest, VALUE obj)
 {
     if (OBJ_FROZEN(dest)) {
         rb_raise(rb_eTypeError, "[bug] frozen object (%s) allocated", rb_obj_classname(dest));
@@ -213,8 +205,7 @@ init_copy(dest, obj)
  */
 
 VALUE
-rb_obj_clone(obj)
-    VALUE obj;
+rb_obj_clone(VALUE obj)
 {
     VALUE clone;
 
@@ -249,8 +240,7 @@ rb_obj_clone(obj)
  */
 
 VALUE
-rb_obj_dup(obj)
-    VALUE obj;
+rb_obj_dup(VALUE obj)
 {
     VALUE dup;
 
@@ -265,8 +255,7 @@ rb_obj_dup(obj)
 
 /* :nodoc: */
 VALUE
-rb_obj_init_copy(obj, orig)
-    VALUE obj, orig;
+rb_obj_init_copy(VALUE obj, VALUE orig)
 {
     if (obj == orig) return obj;
     rb_check_frozen(obj);
@@ -292,8 +281,7 @@ rb_obj_init_copy(obj, orig)
 
 
 static VALUE
-rb_any_to_a(obj)
-    VALUE obj;
+rb_any_to_a(VALUE obj)
 {
     rb_warn("default `to_a' will be obsolete");
     return rb_ary_new3(1, obj);
@@ -311,8 +299,7 @@ rb_any_to_a(obj)
  */
 
 VALUE
-rb_any_to_s(obj)
-    VALUE obj;
+rb_any_to_s(VALUE obj)
 {
     const char *cname = rb_obj_classname(obj);
     size_t len;
@@ -328,17 +315,13 @@ rb_any_to_s(obj)
 }
 
 VALUE
-rb_inspect(obj)
-    VALUE obj;
+rb_inspect(VALUE obj)
 {
     return rb_obj_as_string(rb_funcall(obj, id_inspect, 0, 0));
 }
 
 static int
-inspect_i(id, value, str)
-    ID id;
-    VALUE value;
-    VALUE str;
+inspect_i(ID id, VALUE value, VALUE str)
 {
     VALUE str2;
     const char *ivname;
@@ -364,8 +347,7 @@ inspect_i(id, value, str)
 }
 
 static VALUE
-inspect_obj(obj, str)
-    VALUE obj, str;
+inspect_obj(VALUE obj, VALUE str)
 {
     st_foreach_safe(ROBJECT(obj)->iv_tbl, inspect_i, str);
     rb_str_cat2(str, ">");
@@ -389,8 +371,7 @@ inspect_obj(obj, str)
 
 
 static VALUE
-rb_obj_inspect(obj)
-    VALUE obj;
+rb_obj_inspect(VALUE obj)
 {
     if (TYPE(obj) == T_OBJECT
 	&& ROBJECT(obj)->iv_tbl
@@ -425,8 +406,7 @@ rb_obj_inspect(obj)
  */
 
 VALUE
-rb_obj_is_instance_of(obj, c)
-    VALUE obj, c;
+rb_obj_is_instance_of(VALUE obj, VALUE c)
 {
     switch (TYPE(c)) {
       case T_MODULE:
@@ -469,8 +449,7 @@ rb_obj_is_instance_of(obj, c)
  */
 
 VALUE
-rb_obj_is_kind_of(obj, c)
-    VALUE obj, c;
+rb_obj_is_kind_of(VALUE obj, VALUE c)
 {
     VALUE cl = CLASS_OF(obj);
 
@@ -514,8 +493,7 @@ rb_obj_is_kind_of(obj, c)
  */
 
 VALUE
-rb_obj_tap(obj)
-    VALUE obj;
+rb_obj_tap(VALUE obj)
 {
     rb_yield(obj);
     return obj;
@@ -669,8 +647,7 @@ rb_obj_dummy()
  */
 
 VALUE
-rb_obj_tainted(obj)
-    VALUE obj;
+rb_obj_tainted(VALUE obj)
 {
     if (OBJ_TAINTED(obj))
 	return Qtrue;
@@ -687,8 +664,7 @@ rb_obj_tainted(obj)
  */
 
 VALUE
-rb_obj_taint(obj)
-    VALUE obj;
+rb_obj_taint(VALUE obj)
 {
     rb_secure(4);
     if (!OBJ_TAINTED(obj)) {
@@ -709,8 +685,7 @@ rb_obj_taint(obj)
  */
 
 VALUE
-rb_obj_untaint(obj)
-    VALUE obj;
+rb_obj_untaint(VALUE obj)
 {
     rb_secure(3);
     if (OBJ_TAINTED(obj)) {
@@ -723,8 +698,7 @@ rb_obj_untaint(obj)
 }
 
 void
-rb_obj_infect(obj1, obj2)
-    VALUE obj1, obj2;
+rb_obj_infect(VALUE obj1, VALUE obj2)
 {
     OBJ_INFECT(obj1, obj2);
 }
@@ -750,8 +724,7 @@ rb_obj_infect(obj1, obj2)
  */
 
 VALUE
-rb_obj_freeze(obj)
-    VALUE obj;
+rb_obj_freeze(VALUE obj)
 {
     if (!OBJ_FROZEN(obj)) {
 	if (rb_safe_level() >= 4 && !OBJ_TAINTED(obj)) {
@@ -774,8 +747,7 @@ rb_obj_freeze(obj)
  */
 
 static VALUE
-rb_obj_frozen_p(obj)
-    VALUE obj;
+rb_obj_frozen_p(VALUE obj)
 {
     if (OBJ_FROZEN(obj)) return Qtrue;
     return Qfalse;
@@ -799,8 +771,7 @@ rb_obj_frozen_p(obj)
 
 
 static VALUE
-nil_to_i(obj)
-    VALUE obj;
+nil_to_i(VALUE obj)
 {
     return INT2FIX(0);
 }
@@ -815,8 +786,7 @@ nil_to_i(obj)
  */
 
 static VALUE
-nil_to_f(obj)
-    VALUE obj;
+nil_to_f(VALUE obj)
 {
     return rb_float_new(0.0);
 }
@@ -831,8 +801,7 @@ nil_to_f(obj)
  */
 
 static VALUE
-nil_to_s(obj)
-    VALUE obj;
+nil_to_s(VALUE obj)
 {
     return rb_str_new2("");
 }
@@ -847,8 +816,7 @@ nil_to_s(obj)
  */
 
 static VALUE
-nil_to_a(obj)
-    VALUE obj;
+nil_to_a(VALUE obj)
 {
     return rb_ary_new2(0);
 }
@@ -861,15 +829,13 @@ nil_to_a(obj)
  */
 
 static VALUE
-nil_inspect(obj)
-    VALUE obj;
+nil_inspect(VALUE obj)
 {
     return rb_str_new2("nil");
 }
 
 static VALUE
-main_to_s(obj)
-    VALUE obj;
+main_to_s(VALUE obj)
 {
     return rb_str_new2("main");
 }
@@ -893,8 +859,7 @@ main_to_s(obj)
  */
 
 static VALUE
-true_to_s(obj)
-    VALUE obj;
+true_to_s(VALUE obj)
 {
     return rb_str_new2("true");
 }
@@ -909,8 +874,7 @@ true_to_s(obj)
  */
 
 static VALUE
-true_and(obj, obj2)
-    VALUE obj, obj2;
+true_and(VALUE obj, VALUE obj2)
 {
     return RTEST(obj2)?Qtrue:Qfalse;
 }
@@ -932,8 +896,7 @@ true_and(obj, obj2)
  */
 
 static VALUE
-true_or(obj, obj2)
-    VALUE obj, obj2;
+true_or(VALUE obj, VALUE obj2)
 {
     return Qtrue;
 }
@@ -949,8 +912,7 @@ true_or(obj, obj2)
  */
 
 static VALUE
-true_xor(obj, obj2)
-    VALUE obj, obj2;
+true_xor(VALUE obj, VALUE obj2)
 {
     return RTEST(obj2)?Qfalse:Qtrue;
 }
@@ -974,8 +936,7 @@ true_xor(obj, obj2)
  */
 
 static VALUE
-false_to_s(obj)
-    VALUE obj;
+false_to_s(VALUE obj)
 {
     return rb_str_new2("false");
 }
@@ -991,8 +952,7 @@ false_to_s(obj)
  */
 
 static VALUE
-false_and(obj, obj2)
-    VALUE obj, obj2;
+false_and(VALUE obj, VALUE obj2)
 {
     return Qfalse;
 }
@@ -1008,8 +968,7 @@ false_and(obj, obj2)
  */
 
 static VALUE
-false_or(obj, obj2)
-    VALUE obj, obj2;
+false_or(VALUE obj, VALUE obj2)
 {
     return RTEST(obj2)?Qtrue:Qfalse;
 }
@@ -1028,8 +987,7 @@ false_or(obj, obj2)
  */
 
 static VALUE
-false_xor(obj, obj2)
-    VALUE obj, obj2;
+false_xor(VALUE obj, VALUE obj2)
 {
     return RTEST(obj2)?Qtrue:Qfalse;
 }
@@ -1042,8 +1000,7 @@ false_xor(obj, obj2)
  */
 
 static VALUE
-rb_true(obj)
-    VALUE obj;
+rb_true(VALUE obj)
 {
     return Qtrue;
 }
@@ -1058,8 +1015,7 @@ rb_true(obj)
 
 
 static VALUE
-rb_false(obj)
-    VALUE obj;
+rb_false(VALUE obj)
 {
     return Qfalse;
 }
@@ -1075,8 +1031,7 @@ rb_false(obj)
  */
 
 static VALUE
-rb_obj_pattern_match(obj1, obj2)
-    VALUE obj1, obj2;
+rb_obj_pattern_match(VALUE obj1, VALUE obj2)
 {
     return Qfalse;
 }
@@ -1126,8 +1081,7 @@ rb_obj_pattern_match(obj1, obj2)
  */
 
 static VALUE
-sym_to_i(sym)
-    VALUE sym;
+sym_to_i(VALUE sym)
 {
     ID id = SYM2ID(sym);
 
@@ -1138,8 +1092,7 @@ sym_to_i(sym)
 /* :nodoc: */
 
 static VALUE
-sym_to_int(sym)
-    VALUE sym;
+sym_to_int(VALUE sym)
 {
     rb_warning("treating Symbol as an integer");
     return sym_to_i(sym);
@@ -1156,8 +1109,7 @@ sym_to_int(sym)
  */
 
 static VALUE
-sym_inspect(sym)
-    VALUE sym;
+sym_inspect(VALUE sym)
 {
     VALUE str;
     const char *name;
@@ -1187,8 +1139,7 @@ sym_inspect(sym)
 
 
 static VALUE
-sym_to_s(sym)
-    VALUE sym;
+sym_to_s(VALUE sym)
 {
     return rb_str_new2(rb_id2name(SYM2ID(sym)));
 }
@@ -1204,16 +1155,14 @@ sym_to_s(sym)
  */
 
 static VALUE
-sym_to_sym(sym)
-    VALUE sym;
+sym_to_sym(VALUE sym)
 {
     return sym;
 }
 
 
 static VALUE
-sym_call(args, mid)
-    VALUE args, mid;
+sym_call(VALUE args, VALUE mid)
 {
     VALUE obj;
 
@@ -1224,7 +1173,7 @@ sym_call(args, mid)
     return rb_apply(obj, (ID)mid, args);
 }
 
-VALUE rb_proc_new _((VALUE (*)(ANYARGS/* VALUE yieldarg[, VALUE procarg] */), VALUE));
+extern "C" VALUE rb_proc_new _((VALUE (*)(ANYARGS/* VALUE yieldarg[, VALUE procarg] */), VALUE));
 
 /*
  * call-seq:
@@ -1280,9 +1229,7 @@ sym_to_proc(VALUE sym)
  */
 
 static VALUE
-rb_mod_to_s(klass)
-    VALUE klass;
-
+rb_mod_to_s(VALUE klass)
 {
     if (FL_TEST(klass, FL_SINGLETON)) {
 	VALUE s = rb_str_new2("#<");
@@ -1312,8 +1259,7 @@ rb_mod_to_s(klass)
  */
 
 static VALUE
-rb_mod_freeze(mod)
-    VALUE mod;
+rb_mod_freeze(VALUE mod)
 {
     rb_mod_to_s(mod);
     return rb_obj_freeze(mod);
@@ -1330,8 +1276,7 @@ rb_mod_freeze(mod)
  */
 
 static VALUE
-rb_mod_eqq(mod, arg)
-    VALUE mod, arg;
+rb_mod_eqq(VALUE mod, VALUE arg)
 {
     return rb_obj_is_kind_of(arg, mod);
 }
@@ -1349,8 +1294,7 @@ rb_mod_eqq(mod, arg)
  */
 
 VALUE
-rb_class_inherited_p(mod, arg)
-    VALUE mod, arg;
+rb_class_inherited_p(VALUE mod, VALUE arg)
 {
     VALUE start = mod;
 
@@ -1394,8 +1338,7 @@ rb_class_inherited_p(mod, arg)
  */
 
 static VALUE
-rb_mod_lt(mod, arg)
-    VALUE mod, arg;
+rb_mod_lt(VALUE mod, VALUE arg)
 {
     if (mod == arg) return Qfalse;
     return rb_class_inherited_p(mod, arg);
@@ -1415,8 +1358,7 @@ rb_mod_lt(mod, arg)
  */
 
 static VALUE
-rb_mod_ge(mod, arg)
-    VALUE mod, arg;
+rb_mod_ge(VALUE mod, VALUE arg)
 {
     switch (TYPE(arg)) {
       case T_MODULE:
@@ -1441,8 +1383,7 @@ rb_mod_ge(mod, arg)
  */
 
 static VALUE
-rb_mod_gt(mod, arg)
-    VALUE mod, arg;
+rb_mod_gt(VALUE mod, VALUE arg)
 {
     if (mod == arg) return Qfalse;
     return rb_mod_ge(mod, arg);
@@ -1460,8 +1401,7 @@ rb_mod_gt(mod, arg)
  */
 
 static VALUE
-rb_mod_cmp(mod, arg)
-    VALUE mod, arg;
+rb_mod_cmp(VALUE mod, VALUE arg)
 {
     VALUE cmp;
 
@@ -1484,8 +1424,7 @@ rb_mod_cmp(mod, arg)
 
 static VALUE rb_module_s_alloc _((VALUE));
 static VALUE
-rb_module_s_alloc(klass)
-    VALUE klass;
+rb_module_s_alloc(VALUE klass)
 {
     VALUE mod = rb_module_new();
 
@@ -1495,8 +1434,7 @@ rb_module_s_alloc(klass)
 
 static VALUE rb_class_s_alloc _((VALUE));
 static VALUE
-rb_class_s_alloc(klass)
-    VALUE klass;
+rb_class_s_alloc(VALUE klass)
 {
     return rb_class_boot(0);
 }
@@ -1525,8 +1463,7 @@ rb_class_s_alloc(klass)
  */
 
 static VALUE
-rb_mod_initialize(module)
-    VALUE module;
+rb_mod_initialize(VALUE module)
 {
     if (rb_block_given_p()) {
 	rb_mod_module_eval(0, 0, module);
@@ -1545,10 +1482,7 @@ rb_mod_initialize(module)
  */
 
 static VALUE
-rb_class_initialize(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+rb_class_initialize(int argc, VALUE *argv, VALUE klass)
 {
     VALUE super;
 
@@ -1579,8 +1513,7 @@ rb_class_initialize(argc, argv, klass)
  */
 
 VALUE
-rb_obj_alloc(klass)
-    VALUE klass;
+rb_obj_alloc(VALUE klass)
 {
     VALUE obj;
 
@@ -1599,8 +1532,7 @@ rb_obj_alloc(klass)
 
 static VALUE rb_class_allocate_instance _((VALUE));
 static VALUE
-rb_class_allocate_instance(klass)
-    VALUE klass;
+rb_class_allocate_instance(VALUE klass)
 {
     NEWOBJ(obj, struct RObject);
     OBJSETUP(obj, klass, T_OBJECT);
@@ -1620,10 +1552,7 @@ rb_class_allocate_instance(klass)
  */
 
 VALUE
-rb_class_new_instance(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+rb_class_new_instance(int argc, VALUE *argv, VALUE klass)
 {
     VALUE obj;
 
@@ -1646,8 +1575,7 @@ rb_class_new_instance(argc, argv, klass)
  */
 
 static VALUE
-rb_class_superclass(klass)
-    VALUE klass;
+rb_class_superclass(VALUE klass)
 {
     VALUE super = RCLASS(klass)->super;
 
@@ -1667,8 +1595,7 @@ rb_class_superclass(klass)
 }
 
 static ID
-str_to_id(str)
-    VALUE str;
+str_to_id(VALUE str)
 {
     VALUE sym = rb_str_intern(str);
 
@@ -1676,8 +1603,7 @@ str_to_id(str)
 }
 
 ID
-rb_to_id(name)
-    VALUE name;
+rb_to_id(VALUE name)
 {
     VALUE tmp;
     ID id;
@@ -1732,10 +1658,7 @@ rb_to_id(name)
  */
 
 static VALUE
-rb_mod_attr(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+rb_mod_attr(int argc, VALUE *argv, VALUE klass)
 {
     VALUE name, pub;
 
@@ -1754,10 +1677,7 @@ rb_mod_attr(argc, argv, klass)
  */
 
 static VALUE
-rb_mod_attr_reader(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+rb_mod_attr_reader(int argc, VALUE *argv, VALUE klass)
 {
     int i;
 
@@ -1776,10 +1696,7 @@ rb_mod_attr_reader(argc, argv, klass)
  */
 
 static VALUE
-rb_mod_attr_writer(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+rb_mod_attr_writer(int argc, VALUE *argv, VALUE klass)
 {
     int i;
 
@@ -1803,10 +1720,7 @@ rb_mod_attr_writer(argc, argv, klass)
  */
 
 static VALUE
-rb_mod_attr_accessor(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+rb_mod_attr_accessor(int argc, VALUE *argv, VALUE klass)
 {
     int i;
 
@@ -1826,8 +1740,7 @@ rb_mod_attr_accessor(argc, argv, klass)
  */
 
 static VALUE
-rb_mod_const_get(mod, name)
-    VALUE mod, name;
+rb_mod_const_get(VALUE mod, VALUE name)
 {
     ID id = rb_to_id(name);
 
@@ -1850,8 +1763,7 @@ rb_mod_const_get(mod, name)
  */
 
 static VALUE
-rb_mod_const_set(mod, name, value)
-    VALUE mod, name, value;
+rb_mod_const_set(VALUE mod, VALUE name, VALUE value)
 {
     ID id = rb_to_id(name);
 
@@ -1873,8 +1785,7 @@ rb_mod_const_set(mod, name, value)
  */
 
 static VALUE
-rb_mod_const_defined(mod, name)
-    VALUE mod, name;
+rb_mod_const_defined(VALUE mod, VALUE name)
 {
     ID id = rb_to_id(name);
 
@@ -1904,10 +1815,7 @@ rb_mod_const_defined(mod, name)
  */
 
 static VALUE
-rb_obj_methods(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+rb_obj_methods(int argc, VALUE *argv, VALUE obj)
 {
   retry:
     if (argc == 0) {
@@ -1938,10 +1846,7 @@ rb_obj_methods(argc, argv, obj)
  */
 
 static VALUE
-rb_obj_protected_methods(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+rb_obj_protected_methods(int argc, VALUE *argv, VALUE obj)
 {
     if (argc == 0) {		/* hack to stop warning */
 	VALUE args[1];
@@ -1962,10 +1867,7 @@ rb_obj_protected_methods(argc, argv, obj)
  */
 
 static VALUE
-rb_obj_private_methods(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+rb_obj_private_methods(int argc, VALUE *argv, VALUE obj)
 {
     if (argc == 0) {		/* hack to stop warning */
 	VALUE args[1];
@@ -1986,10 +1888,7 @@ rb_obj_private_methods(argc, argv, obj)
  */
 
 static VALUE
-rb_obj_public_methods(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+rb_obj_public_methods(int argc, VALUE *argv, VALUE obj)
 {
     if (argc == 0) {		/* hack to stop warning */
 	VALUE args[1];
@@ -2021,8 +1920,7 @@ rb_obj_public_methods(argc, argv, obj)
  */
 
 static VALUE
-rb_obj_ivar_get(obj, iv)
-    VALUE obj, iv;
+rb_obj_ivar_get(VALUE obj, VALUE iv)
 {
     ID id = rb_to_id(iv);
 
@@ -2053,8 +1951,7 @@ rb_obj_ivar_get(obj, iv)
  */
 
 static VALUE
-rb_obj_ivar_set(obj, iv, val)
-    VALUE obj, iv, val;
+rb_obj_ivar_set(VALUE obj, VALUE iv, VALUE val)
 {
     ID id = rb_to_id(iv);
 
@@ -2083,8 +1980,7 @@ rb_obj_ivar_set(obj, iv, val)
  */
 
 static VALUE
-rb_obj_ivar_defined(obj, iv)
-    VALUE obj, iv;
+rb_obj_ivar_defined(VALUE obj, VALUE iv)
 {
     ID id = rb_to_id(iv);
 
@@ -2112,8 +2008,7 @@ rb_obj_ivar_defined(obj, iv)
  */
 
 static VALUE
-rb_mod_cvar_get(obj, iv)
-    VALUE obj, iv;
+rb_mod_cvar_get(VALUE obj, VALUE iv)
 {
     ID id = rb_to_id(iv);
 
@@ -2145,8 +2040,7 @@ rb_mod_cvar_get(obj, iv)
  */
 
 static VALUE
-rb_mod_cvar_set(obj, iv, val)
-    VALUE obj, iv, val;
+rb_mod_cvar_set(VALUE obj, VALUE iv, VALUE val)
 {
     ID id = rb_to_id(iv);
 
@@ -2172,8 +2066,7 @@ rb_mod_cvar_set(obj, iv, val)
  */
 
 static VALUE
-rb_mod_cvar_defined(obj, iv)
-    VALUE obj, iv;
+rb_mod_cvar_defined(VALUE obj, VALUE iv)
 {
     ID id = rb_to_id(iv);
 
@@ -2184,10 +2077,7 @@ rb_mod_cvar_defined(obj, iv)
 }
 
 static VALUE
-convert_type(val, tname, method, raise)
-    VALUE val;
-    const char *tname, *method;
-    int raise;
+convert_type(VALUE val, const char *tname, const char *method, int raise)
 {
     ID m;
 
@@ -2209,10 +2099,7 @@ convert_type(val, tname, method, raise)
 }
 
 VALUE
-rb_convert_type(val, type, tname, method)
-    VALUE val;
-    int type;
-    const char *tname, *method;
+rb_convert_type(VALUE val, int type, const char *tname, const char *method)
 {
     VALUE v;
 
@@ -2226,10 +2113,7 @@ rb_convert_type(val, type, tname, method)
 }
 
 VALUE
-rb_check_convert_type(val, type, tname, method)
-    VALUE val;
-    int type;
-    const char *tname, *method;
+rb_check_convert_type(VALUE val, int type, const char *tname, const char *method)
 {
     VALUE v;
 
@@ -2246,9 +2130,7 @@ rb_check_convert_type(val, type, tname, method)
 
 
 static VALUE
-rb_to_integer(val, method)
-    VALUE val;
-    const char *method;
+rb_to_integer(VALUE val, const char *method)
 {
     VALUE v = convert_type(val, "Integer", method, Qtrue);
     if (!rb_obj_is_kind_of(v, rb_cInteger)) {
@@ -2272,15 +2154,13 @@ rb_check_to_integer(VALUE val, const char *method)
 }
 
 VALUE
-rb_to_int(val)
-    VALUE val;
+rb_to_int(VALUE val)
 {
     return rb_to_integer(val, "to_int");
 }
 
 VALUE
-rb_Integer(val)
-    VALUE val;
+rb_Integer(VALUE val)
 {
     VALUE tmp;
 
@@ -2327,16 +2207,13 @@ rb_Integer(val)
  */
 
 static VALUE
-rb_f_integer(obj, arg)
-    VALUE obj, arg;
+rb_f_integer(VALUE obj, VALUE arg)
 {
     return rb_Integer(arg);
 }
 
 double
-rb_cstr_to_dbl(p, badcheck)
-    const char *p;
-    int badcheck;
+rb_cstr_to_dbl(const char *p, int badcheck)
 {
     const char *q;
     char *end;
@@ -2410,9 +2287,7 @@ rb_cstr_to_dbl(p, badcheck)
 }
 
 double
-rb_str_to_dbl(str, badcheck)
-    VALUE str;
-    int badcheck;
+rb_str_to_dbl(VALUE str, int badcheck)
 {
     char *s;
     long len;
@@ -2436,8 +2311,7 @@ rb_str_to_dbl(str, badcheck)
 }
 
 VALUE
-rb_Float(val)
-    VALUE val;
+rb_Float(VALUE val)
 {
     switch (TYPE(val)) {
       case T_FIXNUM:
@@ -2480,15 +2354,13 @@ rb_Float(val)
  */
 
 static VALUE
-rb_f_float(obj, arg)
-    VALUE obj, arg;
+rb_f_float(VALUE obj, VALUE arg)
 {
     return rb_Float(arg);
 }
 
 double
-rb_num2dbl(val)
-    VALUE val;
+rb_num2dbl(VALUE val)
 {
     switch (TYPE(val)) {
       case T_FLOAT:
@@ -2510,9 +2382,7 @@ rb_num2dbl(val)
 }
 
 char*
-rb_str2cstr(str, len)
-    VALUE str;
-    long *len;
+rb_str2cstr(VALUE str, long *len)
 {
     StringValue(str);
     if (len) *len = RSTRING(str)->len;
@@ -2523,8 +2393,7 @@ rb_str2cstr(str, len)
 }
 
 VALUE
-rb_String(val)
-    VALUE val;
+rb_String(VALUE val)
 {
     return rb_convert_type(val, T_STRING, "String", "to_s");
 }
@@ -2543,16 +2412,14 @@ rb_String(val)
  */
 
 static VALUE
-rb_f_string(obj, arg)
-    VALUE obj, arg;
+rb_f_string(VALUE obj, VALUE arg)
 {
     return rb_String(arg);
 }
 
 #if 0
 VALUE
-rb_Array(val)
-    VALUE val;
+rb_Array(VALUE val)
 {
     VALUE tmp = rb_check_array_type(val);
 
@@ -2579,16 +2446,13 @@ rb_Array(val)
  */
 
 static VALUE
-rb_f_array(obj, arg)
-    VALUE obj, arg;
+rb_f_array(VALUE obj, VALUE arg)
 {
     return rb_Array(arg);
 }
 
 static VALUE
-boot_defclass(name, super)
-    char *name;
-    VALUE super;
+boot_defclass(char *name, VALUE super)
 {
     extern st_table *rb_class_tbl;
     VALUE obj = rb_class_boot(super);

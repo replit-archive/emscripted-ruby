@@ -40,10 +40,7 @@ VALUE rb_cString;
 VALUE rb_fs;
 
 static inline void
-str_mod_check(s, p, len)
-    VALUE s;
-    char *p;
-    long len;
+str_mod_check(VALUE s, char *p, long len)
 {
     if (RSTRING(s)->ptr != p || RSTRING(s)->len != len) {
 	rb_raise(rb_eRuntimeError, "string modified");
@@ -51,8 +48,7 @@ str_mod_check(s, p, len)
 }
 
 static inline void
-str_frozen_check(s)
-    VALUE s;
+str_frozen_check(VALUE s)
 {
     if (OBJ_FROZEN(s)) {
 	rb_raise(rb_eRuntimeError, "string frozen");
@@ -61,8 +57,7 @@ str_frozen_check(s)
 
 static VALUE str_alloc _((VALUE));
 static VALUE
-str_alloc(klass)
-    VALUE klass;
+str_alloc(VALUE klass)
 {
     NEWOBJ(str, struct RString);
     OBJSETUP(str, klass, T_STRING);
@@ -75,10 +70,7 @@ str_alloc(klass)
 }
 
 static VALUE
-str_new(klass, ptr, len)
-    VALUE klass;
-    const char *ptr;
-    long len;
+str_new(VALUE klass, const char *ptr, long len)
 {
     VALUE str;
 
@@ -98,16 +90,13 @@ str_new(klass, ptr, len)
 }
 
 VALUE
-rb_str_new(ptr, len)
-    const char *ptr;
-    long len;
+rb_str_new(const char *ptr, long len)
 {
     return str_new(rb_cString, ptr, len);
 }
 
 VALUE
-rb_str_new2(ptr)
-    const char *ptr;
+rb_str_new2(const char *ptr)
 {
     if (!ptr) {
 	rb_raise(rb_eArgError, "NULL pointer given");
@@ -116,9 +105,7 @@ rb_str_new2(ptr)
 }
 
 VALUE
-rb_tainted_str_new(ptr, len)
-    const char *ptr;
-    long len;
+rb_tainted_str_new(const char *ptr, long len)
 {
     VALUE str = rb_str_new(ptr, len);
 
@@ -127,8 +114,7 @@ rb_tainted_str_new(ptr, len)
 }
 
 VALUE
-rb_tainted_str_new2(ptr)
-    const char *ptr;
+rb_tainted_str_new2(const char *ptr)
 {
     VALUE str = rb_str_new2(ptr);
 
@@ -137,8 +123,7 @@ rb_tainted_str_new2(ptr)
 }
 
 static VALUE
-str_new3(klass, str)
-    VALUE klass, str;
+str_new3(VALUE klass, VALUE str)
 {
     VALUE str2 = str_alloc(klass);
 
@@ -151,8 +136,7 @@ str_new3(klass, str)
 }
 
 VALUE
-rb_str_new3(str)
-    VALUE str;
+rb_str_new3(VALUE str)
 {
     VALUE str2 = str_new3(rb_obj_class(str), str);
 
@@ -161,8 +145,7 @@ rb_str_new3(str)
 }
 
 static VALUE
-str_new4(klass, str)
-    VALUE klass, str;
+str_new4(VALUE klass, VALUE str)
 {
     VALUE str2 = str_alloc(klass);
 
@@ -181,8 +164,7 @@ str_new4(klass, str)
 }
 
 VALUE
-rb_str_new4(orig)
-    VALUE orig;
+rb_str_new4(VALUE orig)
 {
     VALUE klass, str;
 
@@ -209,10 +191,7 @@ rb_str_new4(orig)
 }
 
 VALUE
-rb_str_new5(obj, ptr, len)
-    VALUE obj;
-    const char *ptr;
-    long len;
+rb_str_new5(VALUE obj, const char *ptr, long len)
 {
     return str_new(rb_obj_class(obj), ptr, len);
 }
@@ -220,8 +199,7 @@ rb_str_new5(obj, ptr, len)
 #define STR_BUF_MIN_SIZE 128
 
 VALUE
-rb_str_buf_new(capa)
-    long capa;
+rb_str_buf_new(long capa)
 {
     VALUE str = str_alloc(rb_cString);
 
@@ -238,8 +216,7 @@ rb_str_buf_new(capa)
 }
 
 VALUE
-rb_str_buf_new2(ptr)
-    const char *ptr;
+rb_str_buf_new2(const char *ptr)
 {
     VALUE str;
     long len = strlen(ptr);
@@ -251,22 +228,19 @@ rb_str_buf_new2(ptr)
 }
 
 VALUE
-rb_str_tmp_new(len)
-    long len;
+rb_str_tmp_new(long len)
 {
     return str_new(0, 0, len);
 }
 
 VALUE
-rb_str_to_str(str)
-    VALUE str;
+rb_str_to_str(VALUE str)
 {
     return rb_convert_type(str, T_STRING, "String", "to_str");
 }
 
 static void
-rb_str_shared_replace(str, str2)
-    VALUE str, str2;
+rb_str_shared_replace(VALUE str, VALUE str2)
 {
     if (str == str2) return;
     rb_str_modify(str);
@@ -298,8 +272,7 @@ rb_str_shared_replace(str, str2)
 static ID id_to_s;
 
 VALUE
-rb_obj_as_string(obj)
-    VALUE obj;
+rb_obj_as_string(VALUE obj)
 {
     VALUE str;
 
@@ -316,8 +289,7 @@ rb_obj_as_string(obj)
 static VALUE rb_str_replace _((VALUE, VALUE));
 
 VALUE
-rb_str_dup(str)
-    VALUE str;
+rb_str_dup(VALUE str)
 {
     VALUE dup = str_alloc(rb_obj_class(str));
     rb_str_replace(dup, str);
@@ -333,10 +305,7 @@ rb_str_dup(str)
  */
 
 static VALUE
-rb_str_init(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_init(int argc, VALUE *argv, VALUE str)
 {
     VALUE orig;
 
@@ -353,8 +322,7 @@ rb_str_init(argc, argv, str)
  */
 
 static VALUE
-rb_str_length(str)
-    VALUE str;
+rb_str_length(VALUE str)
 {
     return LONG2NUM(RSTRING(str)->len);
 }
@@ -370,8 +338,7 @@ rb_str_length(str)
  */
 
 static VALUE
-rb_str_empty(str)
-    VALUE str;
+rb_str_empty(VALUE str)
 {
     if (RSTRING(str)->len == 0)
 	return Qtrue;
@@ -389,8 +356,7 @@ rb_str_empty(str)
  */
 
 VALUE
-rb_str_plus(str1, str2)
-    VALUE str1, str2;
+rb_str_plus(VALUE str1, VALUE str2)
 {
     VALUE str3;
 
@@ -417,9 +383,7 @@ rb_str_plus(str1, str2)
  */
 
 VALUE
-rb_str_times(str, times)
-    VALUE str;
-    VALUE times;
+rb_str_times(VALUE str, VALUE times)
 {
     VALUE str2;
     long i, len;
@@ -459,8 +423,7 @@ rb_str_times(str, times)
  */
 
 static VALUE
-rb_str_format(str, arg)
-    VALUE str, arg;
+rb_str_format(VALUE str, VALUE arg)
 {
     VALUE *argv;
 
@@ -478,8 +441,7 @@ rb_str_format(str, arg)
 }
 
 static int
-str_independent(str)
-    VALUE str;
+str_independent(VALUE str)
 {
     if (FL_TEST(str, STR_TMPLOCK)) {
 	rb_raise(rb_eRuntimeError, "can't modify string; temporarily locked");
@@ -492,8 +454,7 @@ str_independent(str)
 }
 
 static void
-str_make_independent(str)
-    VALUE str;
+str_make_independent(VALUE str)
 {
     char *ptr;
 
@@ -508,16 +469,14 @@ str_make_independent(str)
 }
 
 void
-rb_str_modify(str)
-    VALUE str;
+rb_str_modify(VALUE str)
 {
     if (!str_independent(str))
 	str_make_independent(str);
 }
 
 void
-rb_str_associate(str, add)
-    VALUE str, add;
+rb_str_associate(VALUE str, VALUE add)
 {
     if (FL_TEST(str, STR_ASSOC)) {
 	/* already associated */
@@ -536,8 +495,7 @@ rb_str_associate(str, add)
 }
 
 VALUE
-rb_str_associated(str)
-    VALUE str;
+rb_str_associated(VALUE str)
 {
     if (FL_TEST(str, STR_ASSOC)) {
 	return RSTRING(str)->aux.shared;
@@ -549,8 +507,7 @@ static const char null_str[] = "";
 #define null_str ((char *)null_str)
 
 VALUE
-rb_string_value(ptr)
-    volatile VALUE *ptr;
+rb_string_value(volatile VALUE *ptr)
 {
     VALUE s = *ptr;
     if (TYPE(s) != T_STRING) {
@@ -565,15 +522,13 @@ rb_string_value(ptr)
 }
 
 char *
-rb_string_value_ptr(ptr)
-    volatile VALUE *ptr;
+rb_string_value_ptr(volatile VALUE *ptr)
 {
     return RSTRING(rb_string_value(ptr))->ptr;
 }
 
 char *
-rb_string_value_cstr(ptr)
-    volatile VALUE *ptr;
+rb_string_value_cstr(volatile VALUE *ptr)
 {
     VALUE str = rb_string_value(ptr);
     char *s = RSTRING(str)->ptr;
@@ -585,8 +540,7 @@ rb_string_value_cstr(ptr)
 }
 
 VALUE
-rb_check_string_type(str)
-    VALUE str;
+rb_check_string_type(VALUE str)
 {
     str = rb_check_convert_type(str, T_STRING, "String", "to_str");
     if (!NIL_P(str) && !RSTRING(str)->ptr) {
@@ -597,9 +551,7 @@ rb_check_string_type(str)
 }
 
 VALUE
-rb_str_substr(str, beg, len)
-    VALUE str;
-    long beg, len;
+rb_str_substr(VALUE str, long beg, long len)
 {
     VALUE str2;
 
@@ -634,15 +586,13 @@ rb_str_substr(str, beg, len)
 }
 
 VALUE
-rb_str_freeze(str)
-    VALUE str;
+rb_str_freeze(VALUE str)
 {
     return rb_obj_freeze(str);
 }
 
 VALUE
-rb_str_dup_frozen(str)
-    VALUE str;
+rb_str_dup_frozen(VALUE str)
 {
     if (FL_TEST(str, ELTS_SHARED) && RSTRING(str)->aux.shared) {
 	VALUE shared = RSTRING(str)->aux.shared;
@@ -658,8 +608,7 @@ rb_str_dup_frozen(str)
 }
 
 VALUE
-rb_str_locktmp(str)
-    VALUE str;
+rb_str_locktmp(VALUE str)
 {
     if (FL_TEST(str, STR_TMPLOCK)) {
 	rb_raise(rb_eRuntimeError, "temporal locking already locked string");
@@ -669,8 +618,7 @@ rb_str_locktmp(str)
 }
 
 VALUE
-rb_str_unlocktmp(str)
-    VALUE str;
+rb_str_unlocktmp(VALUE str)
 {
     if (!FL_TEST(str, STR_TMPLOCK)) {
 	rb_raise(rb_eRuntimeError, "temporal unlocking already unlocked string");
@@ -687,9 +635,7 @@ rb_str_set_len(VALUE str, long len)
 }
 
 VALUE
-rb_str_resize(str, len)
-    VALUE str;
-    long len;
+rb_str_resize(VALUE str, long len)
 {
     if (len < 0) {
 	rb_raise(rb_eArgError, "negative string size (or size too big)");
@@ -710,10 +656,7 @@ rb_str_resize(str, len)
 }
 
 VALUE
-rb_str_buf_cat(str, ptr, len)
-    VALUE str;
-    const char *ptr;
-    long len;
+rb_str_buf_cat(VALUE str, const char *ptr, long len)
 {
     long capa, total;
 
@@ -744,18 +687,13 @@ rb_str_buf_cat(str, ptr, len)
 }
 
 VALUE
-rb_str_buf_cat2(str, ptr)
-    VALUE str;
-    const char *ptr;
+rb_str_buf_cat2(VALUE str, const char *ptr)
 {
     return rb_str_buf_cat(str, ptr, strlen(ptr));
 }
 
 VALUE
-rb_str_cat(str, ptr, len)
-    VALUE str;
-    const char *ptr;
-    long len;
+rb_str_cat(VALUE str, const char *ptr, long len)
 {
     if (len < 0) {
 	rb_raise(rb_eArgError, "negative string size (or size too big)");
@@ -773,16 +711,13 @@ rb_str_cat(str, ptr, len)
 }
 
 VALUE
-rb_str_cat2(str, ptr)
-    VALUE str;
-    const char *ptr;
+rb_str_cat2(VALUE str, const char *ptr)
 {
     return rb_str_cat(str, ptr, strlen(ptr));
 }
 
 VALUE
-rb_str_buf_append(str, str2)
-    VALUE str, str2;
+rb_str_buf_append(VALUE str, VALUE str2)
 {
     long capa, len;
 
@@ -811,8 +746,7 @@ rb_str_buf_append(str, str2)
 }
 
 VALUE
-rb_str_append(str, str2)
-    VALUE str, str2;
+rb_str_append(VALUE str, VALUE str2)
 {
     StringValue(str2);
     rb_str_modify(str);
@@ -851,8 +785,7 @@ rb_str_append(str, str2)
  */
 
 VALUE
-rb_str_concat(str1, str2)
-    VALUE str1, str2;
+rb_str_concat(VALUE str1, VALUE str2)
 {
     if (FIXNUM_P(str2)) {
 	int i = FIX2INT(str2);
@@ -867,8 +800,7 @@ rb_str_concat(str1, str2)
 }
 
 int
-rb_str_hash(str)
-    VALUE str;
+rb_str_hash(VALUE str)
 {
     register long len = RSTRING(str)->len;
     register char *p = RSTRING(str)->ptr;
@@ -910,8 +842,7 @@ rb_str_hash(str)
  */
 
 static VALUE
-rb_str_hash_m(str)
-    VALUE str;
+rb_str_hash_m(VALUE str)
 {
     int key = rb_str_hash(str);
     return INT2FIX(key);
@@ -920,8 +851,7 @@ rb_str_hash_m(str)
 #define lesser(a,b) (((a)>(b))?(b):(a))
 
 int
-rb_str_cmp(str1, str2)
-    VALUE str1, str2;
+rb_str_cmp(VALUE str1, VALUE str2)
 {
     long len;
     int retval;
@@ -948,8 +878,7 @@ rb_str_cmp(str1, str2)
  */
 
 static VALUE
-rb_str_equal(str1, str2)
-    VALUE str1, str2;
+rb_str_equal(VALUE str1, VALUE str2)
 {
     if (str1 == str2) return Qtrue;
     if (TYPE(str2) != T_STRING) {
@@ -975,8 +904,7 @@ rb_str_equal(str1, str2)
  */
 
 static VALUE
-rb_str_eql(str1, str2)
-    VALUE str1, str2;
+rb_str_eql(VALUE str1, VALUE str2)
 {
     if (TYPE(str2) != T_STRING || RSTRING(str1)->len != RSTRING(str2)->len)
 	return Qfalse;
@@ -1014,8 +942,7 @@ rb_str_eql(str1, str2)
  */
 
 static VALUE
-rb_str_cmp_m(str1, str2)
-    VALUE str1, str2;
+rb_str_cmp_m(VALUE str1, VALUE str2)
 {
     long result;
 
@@ -1055,8 +982,7 @@ rb_str_cmp_m(str1, str2)
  */
 
 static VALUE
-rb_str_casecmp(str1, str2)
-    VALUE str1, str2;
+rb_str_casecmp(VALUE str1, VALUE str2)
 {
     long len;
     int retval;
@@ -1075,9 +1001,7 @@ rb_str_casecmp(str1, str2)
 }
 
 static long
-rb_str_index(str, sub, offset)
-    VALUE str, sub;
-    long offset;
+rb_str_index(VALUE str, VALUE sub, long offset)
 {
     long pos;
 
@@ -1113,10 +1037,7 @@ rb_str_index(str, sub, offset)
  */
 
 static VALUE
-rb_str_index_m(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_index_m(int argc, VALUE *argv, VALUE str)
 {
     VALUE sub;
     VALUE initpos;
@@ -1176,9 +1097,7 @@ rb_str_index_m(argc, argv, str)
 }
 
 static long
-rb_str_rindex(str, sub, pos)
-    VALUE str, sub;
-    long pos;
+rb_str_rindex(VALUE str, VALUE sub, long pos)
 {
     long len = RSTRING(sub)->len;
     char *s, *sbeg, *t;
@@ -1226,10 +1145,7 @@ rb_str_rindex(str, sub, pos)
  */
 
 static VALUE
-rb_str_rindex_m(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_rindex_m(int argc, VALUE *argv, VALUE str)
 {
     VALUE sub;
     VALUE position;
@@ -1311,8 +1227,7 @@ rb_str_rindex_m(argc, argv, str)
  */
 
 static VALUE
-rb_str_match(x, y)
-    VALUE x, y;
+rb_str_match(VALUE x, VALUE y)
 {
     switch (TYPE(y)) {
       case T_STRING:
@@ -1344,15 +1259,13 @@ static VALUE get_pat _((VALUE, int));
  */
 
 static VALUE
-rb_str_match_m(str, re)
-    VALUE str, re;
+rb_str_match_m(VALUE str, VALUE re)
 {
     return rb_funcall(get_pat(re, 0), rb_intern("match"), 1, str);
 }
 
 static char
-succ_char(s)
-    char *s;
+succ_char(char *s)
 {
     char c = *s;
 
@@ -1402,8 +1315,7 @@ succ_char(s)
  */
 
 static VALUE
-rb_str_succ(orig)
-    VALUE orig;
+rb_str_succ(VALUE orig)
 {
     VALUE str;
     char *sbeg, *s;
@@ -1454,8 +1366,7 @@ rb_str_succ(orig)
  */
 
 static VALUE
-rb_str_succ_bang(str)
-    VALUE str;
+rb_str_succ_bang(VALUE str)
 {
     rb_str_shared_replace(str, rb_str_succ(str));
 
@@ -1463,9 +1374,7 @@ rb_str_succ_bang(str)
 }
 
 VALUE
-rb_str_upto(beg, end, excl)
-    VALUE beg, end;
-    int excl;
+rb_str_upto(VALUE beg, VALUE end, int excl)
 {
     VALUE current, after_end;
     ID succ = rb_intern("succ");
@@ -1513,10 +1422,7 @@ rb_str_upto(beg, end, excl)
  */
 
 static VALUE
-rb_str_upto_m(argc, argv, beg)
-    int argc;
-    VALUE *argv;
-    VALUE beg;
+rb_str_upto_m(int argc, VALUE *argv, VALUE beg)
 {
     VALUE end, exclusive;
 
@@ -1526,9 +1432,7 @@ rb_str_upto_m(argc, argv, beg)
 }
 
 static VALUE
-rb_str_subpat(str, re, nth)
-    VALUE str, re;
-    int nth;
+rb_str_subpat(VALUE str, VALUE re, int nth)
 {
     if (rb_reg_search(re, str, 0, 0) >= 0) {
 	return rb_reg_nth_match(nth, rb_backref_get());
@@ -1537,9 +1441,7 @@ rb_str_subpat(str, re, nth)
 }
 
 static VALUE
-rb_str_aref(str, indx)
-    VALUE str;
-    VALUE indx;
+rb_str_aref(VALUE str, VALUE indx)
 {
     long idx;
 
@@ -1636,10 +1538,7 @@ rb_str_aref(str, indx)
  */
 
 static VALUE
-rb_str_aref_m(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_aref_m(int argc, VALUE *argv, VALUE str)
 {
     if (argc == 2) {
 	if (TYPE(argv[0]) == T_REGEXP) {
@@ -1654,10 +1553,7 @@ rb_str_aref_m(argc, argv, str)
 }
 
 static void
-rb_str_splice(str, beg, len, val)
-    VALUE str;
-    long beg, len;
-    VALUE val;
+rb_str_splice(VALUE str, long beg, long len, VALUE val)
 {
     if (len < 0) rb_raise(rb_eIndexError, "negative length %ld", len);
 
@@ -1702,19 +1598,13 @@ rb_str_splice(str, beg, len, val)
 }
 
 void
-rb_str_update(str, beg, len, val)
-    VALUE str;
-    long beg, len;
-    VALUE val;
+rb_str_update(VALUE str, long beg, long len, VALUE val)
 {
     rb_str_splice(str, beg, len, val);
 }
 
 static void
-rb_str_subpat_set(str, re, nth, val)
-    VALUE str, re;
-    int nth;
-    VALUE val;
+rb_str_subpat_set(VALUE str, VALUE re, int nth, VALUE val)
 {
     VALUE match;
     long start, end, len;
@@ -1744,9 +1634,7 @@ rb_str_subpat_set(str, re, nth, val)
 }
 
 static VALUE
-rb_str_aset(str, indx, val)
-    VALUE str;
-    VALUE indx, val;
+rb_str_aset(VALUE str, VALUE indx, VALUE val)
 {
     long idx, beg;
 
@@ -1828,10 +1716,7 @@ rb_str_aset(str, indx, val)
  */
 
 static VALUE
-rb_str_aset_m(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_aset_m(int argc, VALUE *argv, VALUE str)
 {
     if (argc == 3) {
 	if (TYPE(argv[0]) == T_REGEXP) {
@@ -1866,8 +1751,7 @@ rb_str_aset_m(argc, argv, str)
  */
 
 static VALUE
-rb_str_insert(str, idx, str2)
-    VALUE str, idx, str2;
+rb_str_insert(VALUE str, VALUE idx, VALUE str2)
 {
     long pos = NUM2LONG(idx);
 
@@ -1904,10 +1788,7 @@ rb_str_insert(str, idx, str2)
  */
 
 static VALUE
-rb_str_slice_bang(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_slice_bang(int argc, VALUE *argv, VALUE str)
 {
     VALUE result;
     VALUE buf[3];
@@ -1928,9 +1809,7 @@ rb_str_slice_bang(argc, argv, str)
 }
 
 static VALUE
-get_pat(pat, quote)
-    VALUE pat;
-    int quote;
+get_pat(VALUE pat, int quote)
 {
     VALUE val;
 
@@ -1957,15 +1836,13 @@ get_pat(pat, quote)
 }
 
 static VALUE
-get_pat_quoted(pat)
-     VALUE pat;
+get_pat_quoted(VALUE pat)
 {
     return get_pat(pat, 1);
 }
 
 static VALUE
-regcomp_failed(str)
-    VALUE str;
+regcomp_failed(VALUE str)
 {
     rb_raise(rb_eArgError, "invalid byte sequence");
     /*NOTREACHED*/
@@ -1973,8 +1850,7 @@ regcomp_failed(str)
 }
 
 static VALUE
-get_arg_pat(pat, quote)
-     VALUE pat;
+get_arg_pat(VALUE pat)
 {
     return rb_rescue2(get_pat_quoted, pat,
                       regcomp_failed, pat,
@@ -1992,10 +1868,7 @@ get_arg_pat(pat, quote)
  */
 
 static VALUE
-rb_str_sub_bang(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_sub_bang(int argc, VALUE *argv, VALUE str)
 {
     VALUE pat, repl, match;
     struct re_registers *regs;
@@ -2086,10 +1959,7 @@ rb_str_sub_bang(argc, argv, str)
  */
 
 static VALUE
-rb_str_sub(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_sub(int argc, VALUE *argv, VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_sub_bang(argc, argv, str);
@@ -2097,11 +1967,7 @@ rb_str_sub(argc, argv, str)
 }
 
 static VALUE
-str_gsub(argc, argv, str, bang)
-    int argc;
-    VALUE *argv;
-    VALUE str;
-    int bang;
+str_gsub(int argc, VALUE *argv, VALUE str, int bang)
 {
     VALUE pat, val, repl, match, dest;
     struct re_registers *regs;
@@ -2234,10 +2100,7 @@ str_gsub(argc, argv, str, bang)
  */
 
 static VALUE
-rb_str_gsub_bang(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_gsub_bang(int argc, VALUE *argv, VALUE str)
 {
     return str_gsub(argc, argv, str, 1);
 }
@@ -2275,10 +2138,7 @@ rb_str_gsub_bang(argc, argv, str)
  */
 
 static VALUE
-rb_str_gsub(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_gsub(int argc, VALUE *argv, VALUE str)
 {
     return str_gsub(argc, argv, str, 0);
 }
@@ -2296,8 +2156,7 @@ rb_str_gsub(argc, argv, str)
  */
 
 static VALUE
-rb_str_replace(str, str2)
-    VALUE str, str2;
+rb_str_replace(VALUE str, VALUE str2)
 {
     if (str == str2) return str;
 
@@ -2348,9 +2207,7 @@ uscore_get()
  */
 
 static VALUE
-rb_f_sub_bang(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_sub_bang(int argc, VALUE *argv)
 {
     return rb_str_sub_bang(argc, argv, uscore_get());
 }
@@ -2365,9 +2222,7 @@ rb_f_sub_bang(argc, argv)
  */
 
 static VALUE
-rb_f_sub(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_sub(int argc, VALUE *argv)
 {
     VALUE str = rb_str_dup(uscore_get());
 
@@ -2391,9 +2246,7 @@ rb_f_sub(argc, argv)
  */
 
 static VALUE
-rb_f_gsub_bang(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_gsub_bang(int argc, VALUE *argv)
 {
     return rb_str_gsub_bang(argc, argv, uscore_get());
 }
@@ -2412,9 +2265,7 @@ rb_f_gsub_bang(argc, argv)
  */
 
 static VALUE
-rb_f_gsub(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_gsub(int argc, VALUE *argv)
 {
     VALUE str = rb_str_dup(uscore_get());
 
@@ -2433,8 +2284,7 @@ rb_f_gsub(argc, argv)
  */
 
 static VALUE
-rb_str_reverse_bang(str)
-    VALUE str;
+rb_str_reverse_bang(VALUE str)
 {
     char *s, *e;
     char c;
@@ -2463,8 +2313,7 @@ rb_str_reverse_bang(str)
  */
 
 static VALUE
-rb_str_reverse(str)
-    VALUE str;
+rb_str_reverse(VALUE str)
 {
     VALUE obj;
     char *s, *e, *p;
@@ -2498,8 +2347,7 @@ rb_str_reverse(str)
  */
 
 static VALUE
-rb_str_include(str, arg)
-    VALUE str, arg;
+rb_str_include(VALUE str, VALUE arg)
 {
     long i;
 
@@ -2539,10 +2387,7 @@ rb_str_include(str, arg)
  */
 
 static VALUE
-rb_str_to_i(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_to_i(int argc, VALUE *argv, VALUE str)
 {
     VALUE b;
     int base;
@@ -2573,8 +2418,7 @@ rb_str_to_i(argc, argv, str)
  */
 
 static VALUE
-rb_str_to_f(str)
-    VALUE str;
+rb_str_to_f(VALUE str)
 {
     return rb_float_new(rb_str_to_dbl(str, Qfalse));
 }
@@ -2589,8 +2433,7 @@ rb_str_to_f(str)
  */
 
 static VALUE
-rb_str_to_s(str)
-    VALUE str;
+rb_str_to_s(VALUE str)
 {
     if (rb_obj_class(str) != rb_cString) {
 	VALUE dup = str_alloc(rb_cString);
@@ -2613,8 +2456,7 @@ rb_str_to_s(str)
  */
 
 VALUE
-rb_str_inspect(str)
-    VALUE str;
+rb_str_inspect(VALUE str)
 {
     char *p, *pend;
     VALUE result = rb_str_buf_new2("\"");
@@ -2689,8 +2531,7 @@ rb_str_inspect(str)
  */
 
 VALUE
-rb_str_dump(str)
-    VALUE str;
+rb_str_dump(VALUE str)
 {
     long len;
     char *p, *pend;
@@ -2797,8 +2638,7 @@ rb_str_dump(str)
  */
 
 static VALUE
-rb_str_upcase_bang(str)
-    VALUE str;
+rb_str_upcase_bang(VALUE str)
 {
     char *s, *send;
     int modify = 0;
@@ -2833,8 +2673,7 @@ rb_str_upcase_bang(str)
  */
 
 static VALUE
-rb_str_upcase(str)
-    VALUE str;
+rb_str_upcase(VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_upcase_bang(str);
@@ -2851,8 +2690,7 @@ rb_str_upcase(str)
  */
 
 static VALUE
-rb_str_downcase_bang(str)
-    VALUE str;
+rb_str_downcase_bang(VALUE str)
 {
     char *s, *send;
     int modify = 0;
@@ -2887,8 +2725,7 @@ rb_str_downcase_bang(str)
  */
 
 static VALUE
-rb_str_downcase(str)
-    VALUE str;
+rb_str_downcase(VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_downcase_bang(str);
@@ -2910,8 +2747,7 @@ rb_str_downcase(str)
  */
 
 static VALUE
-rb_str_capitalize_bang(str)
-    VALUE str;
+rb_str_capitalize_bang(VALUE str)
 {
     char *s, *send;
     int modify = 0;
@@ -2950,8 +2786,7 @@ rb_str_capitalize_bang(str)
  */
 
 static VALUE
-rb_str_capitalize(str)
-    VALUE str;
+rb_str_capitalize(VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_capitalize_bang(str);
@@ -2968,8 +2803,7 @@ rb_str_capitalize(str)
  */
 
 static VALUE
-rb_str_swapcase_bang(str)
-    VALUE str;
+rb_str_swapcase_bang(VALUE str)
 {
     char *s, *send;
     int modify = 0;
@@ -3008,8 +2842,7 @@ rb_str_swapcase_bang(str)
  */
 
 static VALUE
-rb_str_swapcase(str)
-    VALUE str;
+rb_str_swapcase(VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_swapcase_bang(str);
@@ -3024,8 +2857,7 @@ struct tr {
 };
 
 static int
-trnext(t)
-    struct tr *t;
+trnext(struct tr *t)
 {
     for (;;) {
 	if (!t->gen) {
@@ -3060,9 +2892,7 @@ trnext(t)
 static VALUE rb_str_delete_bang _((int,VALUE*,VALUE));
 
 static VALUE
-tr_trans(str, src, repl, sflag)
-    VALUE str, src, repl;
-    int sflag;
+tr_trans(VALUE str, VALUE src, VALUE repl, int sflag)
 {
     struct tr trsrc, trrepl;
     int cflag = 0;
@@ -3165,8 +2995,7 @@ tr_trans(str, src, repl, sflag)
  */
 
 static VALUE
-rb_str_tr_bang(str, src, repl)
-    VALUE str, src, repl;
+rb_str_tr_bang(VALUE str, VALUE src, VALUE repl)
 {
     return tr_trans(str, src, repl, 0);
 }
@@ -3190,8 +3019,7 @@ rb_str_tr_bang(str, src, repl)
  */
 
 static VALUE
-rb_str_tr(str, src, repl)
-    VALUE str, src, repl;
+rb_str_tr(VALUE str, VALUE src, VALUE repl)
 {
     str = rb_str_dup(str);
     tr_trans(str, src, repl, 0);
@@ -3199,10 +3027,7 @@ rb_str_tr(str, src, repl)
 }
 
 static void
-tr_setup_table(str, table, init)
-    VALUE str;
-    char table[256];
-    int init;
+tr_setup_table(VALUE str, char table[256], int init)
 {
     char buf[256];
     struct tr tr;
@@ -3242,10 +3067,7 @@ tr_setup_table(str, table, init)
  */
 
 static VALUE
-rb_str_delete_bang(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_delete_bang(int argc, VALUE *argv, VALUE str)
 {
     char *s, *send, *t;
     char squeez[256];
@@ -3298,10 +3120,7 @@ rb_str_delete_bang(argc, argv, str)
  */
 
 static VALUE
-rb_str_delete(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_delete(int argc, VALUE *argv, VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_delete_bang(argc, argv, str);
@@ -3318,10 +3137,7 @@ rb_str_delete(argc, argv, str)
  */
 
 static VALUE
-rb_str_squeeze_bang(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_squeeze_bang(int argc, VALUE *argv, VALUE str)
 {
     char squeez[256];
     char *s, *send, *t;
@@ -3382,10 +3198,7 @@ rb_str_squeeze_bang(argc, argv, str)
  */
 
 static VALUE
-rb_str_squeeze(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_squeeze(int argc, VALUE *argv, VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_squeeze_bang(argc, argv, str);
@@ -3402,8 +3215,7 @@ rb_str_squeeze(argc, argv, str)
  */
 
 static VALUE
-rb_str_tr_s_bang(str, src, repl)
-    VALUE str, src, repl;
+rb_str_tr_s_bang(VALUE str, VALUE src, VALUE repl)
 {
     return tr_trans(str, src, repl, 1);
 }
@@ -3423,8 +3235,7 @@ rb_str_tr_s_bang(str, src, repl)
  */
 
 static VALUE
-rb_str_tr_s(str, src, repl)
-    VALUE str, src, repl;
+rb_str_tr_s(VALUE str, VALUE src, VALUE repl)
 {
     str = rb_str_dup(str);
     tr_trans(str, src, repl, 1);
@@ -3449,10 +3260,7 @@ rb_str_tr_s(str, src, repl)
  */
 
 static VALUE
-rb_str_count(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_count(int argc, VALUE *argv, VALUE str)
 {
     char table[256];
     char *s, *send;
@@ -3525,10 +3333,7 @@ rb_str_count(argc, argv, str)
  */
 
 static VALUE
-rb_str_split_m(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_split_m(int argc, VALUE *argv, VALUE str)
 {
     VALUE spat;
     VALUE limit;
@@ -3659,9 +3464,7 @@ rb_str_split_m(argc, argv, str)
 }
 
 VALUE
-rb_str_split(str, sep0)
-    VALUE str;
-    const char *sep0;
+rb_str_split(VALUE str, const char *sep0)
 {
     VALUE sep;
 
@@ -3679,9 +3482,7 @@ rb_str_split(str, sep0)
  */
 
 static VALUE
-rb_f_split(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_split(int argc, VALUE *argv)
 {
     return rb_str_split_m(argc, argv, uscore_get());
 }
@@ -3732,10 +3533,7 @@ rb_f_split(argc, argv)
  */
 
 static VALUE
-rb_str_each_line(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_each_line(int argc, VALUE *argv, VALUE str)
 {
     VALUE rs;
     int newline;
@@ -3814,8 +3612,7 @@ rb_str_each_line(argc, argv, str)
  */
 
 static VALUE
-rb_str_each_byte(str)
-    VALUE str;
+rb_str_each_byte(VALUE str)
 {
     long i;
 
@@ -3881,8 +3678,7 @@ rb_str_each_char(VALUE str)
  */
 
 static VALUE
-rb_str_chop_bang(str)
-    VALUE str;
+rb_str_chop_bang(VALUE str)
 {
     if (RSTRING(str)->len > 0) {
 	rb_str_modify(str);
@@ -3918,8 +3714,7 @@ rb_str_chop_bang(str)
  */
 
 static VALUE
-rb_str_chop(str)
-    VALUE str;
+rb_str_chop(VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_chop_bang(str);
@@ -3945,8 +3740,7 @@ rb_str_chop(str)
  */
 
 static VALUE
-rb_f_chop_bang(str)
-    VALUE str;
+rb_f_chop_bang(VALUE str)
 {
     return rb_str_chop_bang(uscore_get());
 }
@@ -3992,10 +3786,7 @@ rb_f_chop()
  */
 
 static VALUE
-rb_str_chomp_bang(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_chomp_bang(int argc, VALUE *argv, VALUE str)
 {
     VALUE rs;
     int newline;
@@ -4084,10 +3875,7 @@ rb_str_chomp_bang(argc, argv, str)
  */
 
 static VALUE
-rb_str_chomp(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_chomp(int argc, VALUE *argv, VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_chomp_bang(argc, argv, str);
@@ -4110,9 +3898,7 @@ rb_str_chomp(argc, argv, str)
  */
 
 static VALUE
-rb_f_chomp_bang(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_chomp_bang(int argc, VALUE *argv)
 {
     return rb_str_chomp_bang(argc, argv, uscore_get());
 }
@@ -4135,9 +3921,7 @@ rb_f_chomp_bang(argc, argv)
  */
 
 static VALUE
-rb_f_chomp(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_chomp(int argc, VALUE *argv)
 {
     VALUE str = uscore_get();
     VALUE dup = rb_str_dup(str);
@@ -4162,8 +3946,7 @@ rb_f_chomp(argc, argv)
  */
 
 static VALUE
-rb_str_lstrip_bang(str)
-    VALUE str;
+rb_str_lstrip_bang(VALUE str)
 {
     char *s, *t, *e;
 
@@ -4196,8 +3979,7 @@ rb_str_lstrip_bang(str)
  */
 
 static VALUE
-rb_str_lstrip(str)
-    VALUE str;
+rb_str_lstrip(VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_lstrip_bang(str);
@@ -4218,8 +4000,7 @@ rb_str_lstrip(str)
  */
 
 static VALUE
-rb_str_rstrip_bang(str)
-    VALUE str;
+rb_str_rstrip_bang(VALUE str)
 {
     char *s, *t, *e;
 
@@ -4255,8 +4036,7 @@ rb_str_rstrip_bang(str)
  */
 
 static VALUE
-rb_str_rstrip(str)
-    VALUE str;
+rb_str_rstrip(VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_rstrip_bang(str);
@@ -4273,8 +4053,7 @@ rb_str_rstrip(str)
  */
 
 static VALUE
-rb_str_strip_bang(str)
-    VALUE str;
+rb_str_strip_bang(VALUE str)
 {
     VALUE l = rb_str_lstrip_bang(str);
     VALUE r = rb_str_rstrip_bang(str);
@@ -4295,8 +4074,7 @@ rb_str_strip_bang(str)
  */
 
 static VALUE
-rb_str_strip(str)
-    VALUE str;
+rb_str_strip(VALUE str)
 {
     str = rb_str_dup(str);
     rb_str_strip_bang(str);
@@ -4304,9 +4082,7 @@ rb_str_strip(str)
 }
 
 static VALUE
-scan_once(str, pat, start)
-    VALUE str, pat;
-    long *start;
+scan_once(VALUE str, VALUE pat, long *start)
 {
     VALUE result, match;
     struct re_registers *regs;
@@ -4373,8 +4149,7 @@ scan_once(str, pat, start)
  */
 
 static VALUE
-rb_str_scan(str, pat)
-    VALUE str, pat;
+rb_str_scan(VALUE str, VALUE pat)
 {
     VALUE result;
     long start = 0;
@@ -4414,8 +4189,7 @@ rb_str_scan(str, pat)
  */
 
 static VALUE
-rb_f_scan(self, pat)
-    VALUE self, pat;
+rb_f_scan(VALUE self, VALUE pat)
 {
     return rb_str_scan(uscore_get(), pat);
 }
@@ -4436,8 +4210,7 @@ rb_f_scan(self, pat)
  */
 
 static VALUE
-rb_str_hex(str)
-    VALUE str;
+rb_str_hex(VALUE str)
 {
     return rb_str_to_inum(str, 16, Qfalse);
 }
@@ -4458,8 +4231,7 @@ rb_str_hex(str)
  */
 
 static VALUE
-rb_str_oct(str)
-    VALUE str;
+rb_str_oct(VALUE str)
 {
     return rb_str_to_inum(str, -8, Qfalse);
 }
@@ -4476,10 +4248,9 @@ rb_str_oct(str)
  */
 
 static VALUE
-rb_str_crypt(str, salt)
-    VALUE str, salt;
+rb_str_crypt(VALUE str, VALUE salt)
 {
-    extern char *crypt();
+//     extern char *crypt(...);
     VALUE result;
     const char *s;
 
@@ -4517,8 +4288,7 @@ rb_str_crypt(str, salt)
  */
 
 VALUE
-rb_str_intern(s)
-    VALUE s;
+rb_str_intern(VALUE s)
 {
     volatile VALUE str = s;
     ID id;
@@ -4548,10 +4318,7 @@ rb_str_intern(s)
  */
 
 static VALUE
-rb_str_sum(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_sum(int argc, VALUE *argv, VALUE str)
 {
     VALUE vbits;
     int bits;
@@ -4599,11 +4366,7 @@ rb_str_sum(argc, argv, str)
 }
 
 static VALUE
-rb_str_justify(argc, argv, str, jflag)
-    int argc;
-    VALUE *argv;
-    VALUE str;
-    char jflag;
+rb_str_justify(int argc, VALUE *argv, VALUE str, char jflag)
 {
     VALUE w;
     long width, flen = 0;
@@ -4683,10 +4446,7 @@ rb_str_justify(argc, argv, str, jflag)
  */
 
 static VALUE
-rb_str_ljust(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_ljust(int argc, VALUE *argv, VALUE str)
 {
     return rb_str_justify(argc, argv, str, 'l');
 }
@@ -4706,10 +4466,7 @@ rb_str_ljust(argc, argv, str)
  */
 
 static VALUE
-rb_str_rjust(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_rjust(int argc, VALUE *argv, VALUE str)
 {
     return rb_str_justify(argc, argv, str, 'r');
 }
@@ -4729,10 +4486,7 @@ rb_str_rjust(argc, argv, str)
  */
 
 static VALUE
-rb_str_center(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_center(int argc, VALUE *argv, VALUE str)
 {
     return rb_str_justify(argc, argv, str, 'c');
 }
@@ -4751,10 +4505,7 @@ rb_str_center(argc, argv, str)
  */
 
 static VALUE
-rb_str_partition(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_partition(int argc, VALUE *argv, VALUE str)
 {
     VALUE sep;
     long pos;
@@ -4798,9 +4549,7 @@ rb_str_partition(argc, argv, str)
  */
 
 static VALUE
-rb_str_rpartition(str, sep)
-    VALUE str;
-    VALUE sep;
+rb_str_rpartition(VALUE str, VALUE sep)
 {
     long pos = RSTRING(str)->len;
 
@@ -4833,10 +4582,7 @@ rb_str_rpartition(str, sep)
  */
 
 static VALUE
-rb_str_start_with(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_start_with(int argc, VALUE *argv, VALUE str)
 {
     int i;
     VALUE pat;
@@ -4860,10 +4606,7 @@ rb_str_start_with(argc, argv, str)
  */
 
 static VALUE
-rb_str_end_with(argc, argv, str)
-    int argc;
-    VALUE *argv;
-    VALUE str;
+rb_str_end_with(int argc, VALUE *argv, VALUE str)
 {
     int i;
     long pos;
@@ -4882,10 +4625,7 @@ rb_str_end_with(argc, argv, str)
 }
 
 void
-rb_str_setter(val, id, var)
-    VALUE val;
-    ID id;
-    VALUE *var;
+rb_str_setter(VALUE val, ID id, VALUE *var)
 {
     if (!NIL_P(val) && TYPE(val) != T_STRING) {
 	rb_raise(rb_eTypeError, "value of %s must be String", rb_id2name(id));

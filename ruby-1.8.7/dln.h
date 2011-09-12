@@ -1,3 +1,4 @@
+extern "C" {
 /**********************************************************************
 
   dln.h -
@@ -38,3 +39,4 @@ extern char *dln_argv0;
 
 void *dln_load _((const char*));
 #endif
+}

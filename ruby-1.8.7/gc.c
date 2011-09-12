@@ -35,7 +35,7 @@
 #endif
 
 void re_free_registers _((struct re_registers*));
-void rb_io_fptr_finalize _((struct rb_io_t*));
+extern "C" void rb_io_fptr_finalize _((struct rb_io_t*));
 
 #define rb_setjmp(env) RUBY_SETJMP(env)
 #define rb_jmp_buf rb_jmpbuf_t
@@ -72,7 +72,7 @@ void *alloca ();
 
 static unsigned long malloc_increase = 0;
 static unsigned long malloc_limit = GC_MALLOC_LIMIT;
-static void run_final();
+static void run_final(VALUE obj);
 static VALUE nomem_error;
 static void garbage_collect();
 
@@ -99,8 +99,7 @@ rb_memerror()
  */
 
 static VALUE
-gc_stress_get(self)
-    VALUE self;
+gc_stress_get(VALUE self)
 {
     return ruby_gc_stress ? Qtrue : Qfalse;
 }
@@ -118,17 +117,15 @@ gc_stress_get(self)
  */
 
 static VALUE
-gc_stress_set(self, bool)
-    VALUE self, bool;
+gc_stress_set(VALUE self, VALUE bool_)
 {
     rb_secure(2);
-    ruby_gc_stress = RTEST(bool);
-    return bool;
+    ruby_gc_stress = RTEST(bool_);
+    return bool_;
 }
 
 void *
-ruby_xmalloc(size)
-    long size;
+ruby_xmalloc(long size)
 {
     void *mem;
 
@@ -154,8 +151,7 @@ ruby_xmalloc(size)
 }
 
 void *
-ruby_xcalloc(n, size)
-    long n, size;
+ruby_xcalloc(long n, long size)
 {
     void *mem;
 
@@ -166,9 +162,7 @@ ruby_xcalloc(n, size)
 }
 
 void *
-ruby_xrealloc(ptr, size)
-    void *ptr;
-    long size;
+ruby_xrealloc(void *ptr, long size)
 {
     void *mem;
 
@@ -192,8 +186,7 @@ ruby_xrealloc(ptr, size)
 }
 
 void
-ruby_xfree(x)
-    void *x;
+ruby_xfree(void *x)
 {
     if (x)
 	RUBY_CRITICAL(free(x));
@@ -257,8 +250,7 @@ static struct gc_list {
 } *global_List = 0;
 
 void
-rb_gc_register_address(addr)
-    VALUE *addr;
+rb_gc_register_address(VALUE *addr)
 {
     struct gc_list *tmp;
 
@@ -269,8 +261,7 @@ rb_gc_register_address(addr)
 }
 
 void
-rb_gc_unregister_address(addr)
-    VALUE *addr;
+rb_gc_unregister_address(VALUE *addr)
 {
     struct gc_list *tmp = global_List;
 
@@ -294,8 +285,7 @@ rb_gc_unregister_address(addr)
 #undef GC_DEBUG
 
 void
-rb_global_variable(var)
-    VALUE *var;
+rb_global_variable(VALUE *var)
 {
     rb_gc_register_address(var);
 }
@@ -434,11 +424,7 @@ rb_newobj()
 }
 
 VALUE
-rb_data_object_alloc(klass, datap, dmark, dfree)
-    VALUE klass;
-    void *datap;
-    RUBY_DATA_FUNC dmark;
-    RUBY_DATA_FUNC dfree;
+rb_data_object_alloc(VALUE klass, void *datap, RUBY_DATA_FUNC dmark, RUBY_DATA_FUNC dfree)
 {
     NEWOBJ(data, struct RData);
     if (klass) Check_Type(klass, T_CLASS);
@@ -508,8 +494,7 @@ stack_end_address(VALUE **stack_end_p)
 #else
 static int grow_direction;
 static int
-stack_grow_direction(addr)
-    VALUE *addr;
+stack_grow_direction(VALUE *addr)
 {
     SET_STACK_END;
 
@@ -528,8 +513,7 @@ stack_grow_direction(addr)
 } while (0)
 
 int
-ruby_stack_length(p)
-    VALUE **p;
+ruby_stack_length(VALUE **p)
 {
     SET_STACK_END;
     if (p) *p = STACK_UPPER(STACK_END, rb_gc_stack_start, STACK_END);
@@ -562,8 +546,7 @@ init_mark_stack()
 static st_table *source_filenames;
 
 char *
-rb_source_filename(f)
-    const char *f;
+rb_source_filename(const char *f)
 {
     st_data_t name;
 
@@ -580,8 +563,7 @@ rb_source_filename(f)
 }
 
 static void
-mark_source_filename(f)
-    char *f;
+mark_source_filename(char *f)
 {
     if (f) {
 	f[-1] = 1;
@@ -589,8 +571,7 @@ mark_source_filename(f)
 }
 
 static int
-sweep_source_filename(key, value)
-    char *key, *value;
+sweep_source_filename(char *key, char *value)
 {
     if (*value) {
 	*value = 0;
@@ -641,8 +622,7 @@ gc_mark_rest()
 }
 
 static inline int
-is_pointer_to_heap(ptr)
-    void *ptr;
+is_pointer_to_heap(void *ptr)
 {
     register RVALUE *p = RANY(ptr);
     register RVALUE *heap_org;
@@ -661,9 +641,7 @@ is_pointer_to_heap(ptr)
 }
 
 static void
-mark_locations_array(x, n)
-    register VALUE *x;
-    register long n;
+mark_locations_array(register VALUE *x, register long n)
 {
     VALUE v;
     while (n--) {
@@ -676,8 +654,7 @@ mark_locations_array(x, n)
 }
 
 void
-rb_gc_mark_locations(start, end)
-    VALUE *start, *end;
+rb_gc_mark_locations(VALUE *start, VALUE *end)
 {
     long n;
 
@@ -686,36 +663,27 @@ rb_gc_mark_locations(start, end)
 }
 
 static int
-mark_entry(key, value, lev)
-    ID key;
-    VALUE value;
-    int lev;
+mark_entry(ID key, VALUE value, int lev)
 {
     gc_mark(value, lev);
     return ST_CONTINUE;
 }
 
 static void
-mark_tbl(tbl, lev)
-    st_table *tbl;
-    int lev;
+mark_tbl(st_table *tbl, int lev)
 {
     if (!tbl) return;
     st_foreach(tbl, mark_entry, lev);
 }
 
 void
-rb_mark_tbl(tbl)
-    st_table *tbl;
+rb_mark_tbl(st_table *tbl)
 {
     mark_tbl(tbl, 0);
 }
 
 static int
-mark_keyvalue(key, value, lev)
-    VALUE key;
-    VALUE value;
-    int lev;
+mark_keyvalue(VALUE key, VALUE value, int lev)
 {
     gc_mark(key, lev);
     gc_mark(value, lev);
@@ -723,24 +691,20 @@ mark_keyvalue(key, value, lev)
 }
 
 static void
-mark_hash(tbl, lev)
-    st_table *tbl;
-    int lev;
+mark_hash(st_table *tbl, int lev)
 {
     if (!tbl) return;
     st_foreach(tbl, mark_keyvalue, lev);
 }
 
 void
-rb_mark_hash(tbl)
-    st_table *tbl;
+rb_mark_hash(st_table *tbl)
 {
     mark_hash(tbl, 0);
 }
 
 void
-rb_gc_mark_maybe(obj)
-    VALUE obj;
+rb_gc_mark_maybe(VALUE obj)
 {
     if (is_pointer_to_heap((void *)obj)) {
 	gc_mark(obj, 0);
@@ -750,9 +714,7 @@ rb_gc_mark_maybe(obj)
 #define GC_LEVEL_MAX 250
 
 static void
-gc_mark(ptr, lev)
-    VALUE ptr;
-    int lev;
+gc_mark(VALUE ptr, int lev)
 {
     register RVALUE *obj;
 
@@ -778,16 +740,13 @@ gc_mark(ptr, lev)
 }
 
 void
-rb_gc_mark(ptr)
-    VALUE ptr;
+rb_gc_mark(VALUE ptr)
 {
     gc_mark(ptr, 0);
 }
 
 static void
-gc_mark_children(ptr, lev)
-    VALUE ptr;
-    int lev;
+gc_mark_children(VALUE ptr, int lev)
 {
     register RVALUE *obj = RANY(ptr);
 
@@ -1043,8 +1002,7 @@ gc_mark_children(ptr, lev)
 static void obj_free _((VALUE));
 
 static void
-finalize_list(p)
-    RVALUE *p;
+finalize_list(RVALUE *p)
 {
     while (p) {
 	RVALUE *tmp = p->as.free.next;
@@ -1077,7 +1035,7 @@ free_unused_heaps()
     }
 }
 
-void rb_gc_abort_threads(void);
+extern "C" void rb_gc_abort_threads(void);
 
 static void
 gc_sweep()
@@ -1181,8 +1139,7 @@ gc_sweep()
 }
 
 void
-rb_gc_force_recycle(p)
-    VALUE p;
+rb_gc_force_recycle(VALUE p)
 {
     RANY(p)->as.free.flags = 0;
     RANY(p)->as.free.next = freelist;
@@ -1190,8 +1147,7 @@ rb_gc_force_recycle(p)
 }
 
 static void
-obj_free(obj)
-    VALUE obj;
+obj_free(VALUE obj)
 {
     switch (RANY(obj)->as.basic.flags & T_MASK) {
       case T_NIL:
@@ -1316,8 +1272,7 @@ obj_free(obj)
 }
 
 void
-rb_gc_mark_frame(frame)
-    struct FRAME *frame;
+rb_gc_mark_frame(struct FRAME *frame)
 {
     gc_mark((VALUE)frame->node, 0);
 }
@@ -1481,8 +1436,7 @@ rb_gc_start()
 }
 
 void
-ruby_set_stack_size(size)
-    size_t size;
+ruby_set_stack_size(size_t size)
 {
 #ifndef STACK_LEVEL_MAX
     STACK_LEVEL_MAX = size / sizeof(VALUE);
@@ -1490,8 +1444,7 @@ ruby_set_stack_size(size)
 }
 
 void
-Init_stack(addr)
-    VALUE *addr;
+Init_stack(VALUE *addr)
 {
 #ifdef __ia64
     if (rb_gc_register_stack_start == 0) {
@@ -1639,8 +1592,7 @@ Init_heap()
 }
 
 static VALUE
-os_obj_of(of)
-    VALUE of;
+os_obj_of(VALUE of)
 {
     int i;
     int n = 0;
@@ -1708,10 +1660,7 @@ os_obj_of(of)
  */
 
 static VALUE
-os_each_obj(argc, argv, os)
-    int argc;
-    VALUE *argv;
-    VALUE os;
+os_each_obj(int argc, VALUE *argv, VALUE os)
 {
     VALUE of;
 
@@ -1732,8 +1681,7 @@ static VALUE finalizers;
  */
 
 static VALUE
-add_final(os, block)
-    VALUE os, block;
+add_final(VALUE os, VALUE block)
 {
     rb_warn("ObjectSpace::add_finalizer is deprecated; use define_finalizer");
     if (!rb_respond_to(block, rb_intern("call"))) {
@@ -1748,8 +1696,7 @@ add_final(os, block)
  * deprecated
  */
 static VALUE
-rm_final(os, block)
-    VALUE os, block;
+rm_final(VALUE os, VALUE block)
 {
     rb_warn("ObjectSpace::remove_finalizer is deprecated; use undefine_finalizer");
     rb_ary_delete(finalizers, block);
@@ -1771,8 +1718,7 @@ finals()
  */
 
 static VALUE
-call_final(os, obj)
-    VALUE os, obj;
+call_final(VALUE os, VALUE obj)
 {
     rb_warn("ObjectSpace::call_finalizer is deprecated; use define_finalizer");
     need_call_final = 1;
@@ -1789,8 +1735,7 @@ call_final(os, obj)
  */
 
 static VALUE
-undefine_final(os, obj)
-    VALUE os, obj;
+undefine_final(VALUE os, VALUE obj)
 {
     if (finalizer_table) {
 	st_delete(finalizer_table, (st_data_t*)&obj, 0);
@@ -1808,10 +1753,7 @@ undefine_final(os, obj)
  */
 
 static VALUE
-define_final(argc, argv, os)
-    int argc;
-    VALUE *argv;
-    VALUE os;
+define_final(int argc, VALUE *argv, VALUE os)
 {
     VALUE obj, block, table;
 
@@ -1841,8 +1783,7 @@ define_final(argc, argv, os)
 }
 
 void
-rb_gc_copy_finalizer(dest, obj)
-    VALUE dest, obj;
+rb_gc_copy_finalizer(VALUE dest, VALUE obj)
 {
     VALUE table;
 
@@ -1855,16 +1796,14 @@ rb_gc_copy_finalizer(dest, obj)
 }
 
 static VALUE
-run_single_final(args)
-    VALUE *args;
+run_single_final(VALUE *args)
 {
     rb_eval_cmd(args[0], args[1], (int)args[2]);
     return Qnil;
 }
 
 static void
-run_final(obj)
-    VALUE obj;
+run_final(VALUE obj)
 {
     long i;
     int status, critical_save = rb_thread_critical;
@@ -1963,8 +1902,7 @@ rb_gc_call_finalizer_at_exit()
  */
 
 static VALUE
-id2ref(obj, objid)
-    VALUE obj, objid;
+id2ref(VALUE obj, VALUE objid)
 {
     unsigned long ptr, p0;
     int type;

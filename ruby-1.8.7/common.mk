@@ -16,7 +16,7 @@ RBCONFIG      = ./.rbconfig.time
 LIBRUBY_EXTS  = ./.libruby-with-ext.time
 RDOCOUT       = $(EXTOUT)/rdoc
 
-DMYEXT	      = dmyext.$(OBJEXT)
+DMYEXT	      = 
 MAINOBJ	      = main.$(OBJEXT)
 EXTOBJS	      = 
 DLDOBJS	      = $(DMYEXT)

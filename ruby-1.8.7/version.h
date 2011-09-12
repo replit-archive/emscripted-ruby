@@ -1,3 +1,4 @@
+extern "C" {
 #define RUBY_VERSION "1.8.7"
 #define RUBY_RELEASE_DATE "2008-05-31"
 #define RUBY_VERSION_CODE 187
@@ -27,3 +28,4 @@ RUBY_EXTERN const char *ruby_copyright;
 
 #define RUBY_RELEASE_STR "patchlevel"
 #define RUBY_RELEASE_NUM RUBY_PATCHLEVEL
+}

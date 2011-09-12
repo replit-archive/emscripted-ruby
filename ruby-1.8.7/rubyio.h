@@ -1,3 +1,4 @@
+extern "C" {
 /**********************************************************************
 
   rubyio.h -
@@ -89,3 +90,4 @@ NORETURN(void rb_eof_error _((void)));
 void rb_read_check _((FILE*));
 int rb_read_pending _((FILE*));
 #endif
+}

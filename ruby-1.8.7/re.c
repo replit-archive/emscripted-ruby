@@ -70,9 +70,7 @@ static const char casetable[] = {
 #endif
 
 int
-rb_memcicmp(x, y, len)
-    const void *x, *y;
-    long len;
+rb_memcicmp(const void *x, const void *y, long len)
 {
     const unsigned char *p1 = x, *p2 = y;
     int tmp;
@@ -85,9 +83,7 @@ rb_memcicmp(x, y, len)
 }
 
 int
-rb_memcmp(p1, p2, len)
-    const void *p1, *p2;
-    long len;
+rb_memcmp(const void *p1, const void *p2, long len)
 {
     if (!ruby_ignorecase) {
 	return memcmp(p1, p2, len);
@@ -96,9 +92,7 @@ rb_memcmp(p1, p2, len)
 }
 
 long
-rb_memsearch(x0, m, y0, n)
-    const void *x0, *y0;
-    long m, n;
+rb_memsearch(const void *x0, long m, const void *y0, long n)
 {
     const unsigned char *x = (unsigned char *)x0, *y = (unsigned char *)y0;
     const unsigned char *s, *e;
@@ -164,8 +158,7 @@ rb_memsearch(x0, m, y0, n)
 static int reg_kcode = DEFAULT_KCODE;
 
 static void
-kcode_euc(re)
-    struct RRegexp *re;
+kcode_euc(struct RRegexp *re)
 {
     FL_UNSET(re, KCODE_MASK);
     FL_SET(re, KCODE_EUC);
@@ -173,8 +166,7 @@ kcode_euc(re)
 }
 
 static void
-kcode_sjis(re)
-    struct RRegexp *re;
+kcode_sjis(struct RRegexp *re)
 {
     FL_UNSET(re, KCODE_MASK);
     FL_SET(re, KCODE_SJIS);
@@ -182,8 +174,7 @@ kcode_sjis(re)
 }
 
 static void
-kcode_utf8(re)
-    struct RRegexp *re;
+kcode_utf8(struct RRegexp *re)
 {
     FL_UNSET(re, KCODE_MASK);
     FL_SET(re, KCODE_UTF8);
@@ -191,8 +182,7 @@ kcode_utf8(re)
 }
 
 static void
-kcode_none(re)
-    struct RRegexp *re;
+kcode_none(struct RRegexp *re)
 {
     FL_UNSET(re, KCODE_MASK);
     FL_SET(re, KCODE_FIXED);
@@ -201,8 +191,7 @@ kcode_none(re)
 static int curr_kcode;
 
 void
-rb_kcode_set_option(re)
-    VALUE re;
+rb_kcode_set_option(VALUE re)
 {
     if (!FL_TEST(re, KCODE_FIXED)) return;
 
@@ -245,9 +234,7 @@ rb_kcode_reset_option()
 }
 
 int
-rb_reg_mbclen2(c, re)
-    unsigned int c;
-    VALUE re;
+rb_reg_mbclen2(unsigned int c, VALUE re)
 {
     int len;
 
@@ -260,8 +247,7 @@ rb_reg_mbclen2(c, re)
 }
 
 static void
-rb_reg_check(re)
-    VALUE re;
+rb_reg_check(VALUE re)
 {
     if (!RREGEXP(re)->ptr || !RREGEXP(re)->str) {
 	rb_raise(rb_eTypeError, "uninitialized Regexp");
@@ -271,10 +257,7 @@ rb_reg_check(re)
 extern int ruby_in_compile;
 
 static void
-rb_reg_expr_str(str, s, len)
-    VALUE str;
-    const char *s;
-    long len;
+rb_reg_expr_str(VALUE str, const char *s, long len)
 {
     const char *p, *pend;
     int need_escape = 0;
@@ -327,10 +310,7 @@ rb_reg_expr_str(str, s, len)
 }
 
 static VALUE
-rb_reg_desc(s, len, re)
-    const char *s;
-    long len;
-    VALUE re;
+rb_reg_desc(const char *s, long len, VALUE re)
 {
     VALUE str = rb_str_buf_new2("/");
 
@@ -377,8 +357,7 @@ rb_reg_desc(s, len, re)
  */
 
 static VALUE
-rb_reg_source(re)
-    VALUE re;
+rb_reg_source(VALUE re)
 {
     VALUE str;
 
@@ -400,8 +379,7 @@ rb_reg_source(re)
 */
 
 static VALUE
-rb_reg_inspect(re)
-    VALUE re;
+rb_reg_inspect(VALUE re)
 {
     rb_reg_check(re);
     return rb_reg_desc(RREGEXP(re)->str, RREGEXP(re)->len, re);
@@ -429,8 +407,7 @@ rb_reg_inspect(re)
  */
 
 static VALUE
-rb_reg_to_s(re)
-    VALUE re;
+rb_reg_to_s(VALUE re)
 {
     int options;
     const int embeddable = RE_OPTION_MULTILINE|RE_OPTION_IGNORECASE|RE_OPTION_EXTENDED;
@@ -520,11 +497,7 @@ rb_reg_to_s(re)
 }
 
 static void
-rb_reg_raise(s, len, err, re)
-    const char *s;
-    long len;
-    const char *err;
-    VALUE re;
+rb_reg_raise(const char *s, long len, const char *err, VALUE re)
 {
     VALUE desc = rb_reg_desc(s, len, re);
 
@@ -543,8 +516,7 @@ rb_reg_raise(s, len, err, re)
  */
 
 static VALUE
-rb_reg_casefold_p(re)
-    VALUE re;
+rb_reg_casefold_p(VALUE re)
 {
     rb_reg_check(re);
     if (RREGEXP(re)->ptr->options & RE_OPTION_IGNORECASE) return Qtrue;
@@ -576,8 +548,7 @@ rb_reg_casefold_p(re)
  */
 
 static VALUE
-rb_reg_options_m(re)
-    VALUE re;
+rb_reg_options_m(VALUE re)
 {
     int options = rb_reg_options(re);
     return INT2NUM(options);
@@ -592,8 +563,7 @@ rb_reg_options_m(re)
  */
 
 static VALUE
-rb_reg_kcode_m(re)
-    VALUE re;
+rb_reg_kcode_m(VALUE re)
 {
     const char *kcode;
 
@@ -617,10 +587,7 @@ rb_reg_kcode_m(re)
 }
 
 static Regexp*
-make_regexp(s, len, flags)
-    const char *s;
-    long len;
-    int flags;
+make_regexp(const char *s, long len, int flags)
 {
     Regexp *rp;
     char *err;
@@ -668,8 +635,7 @@ VALUE rb_cMatch;
 
 static VALUE match_alloc _((VALUE));
 static VALUE
-match_alloc(klass)
-    VALUE klass;
+match_alloc(VALUE klass)
 {
     NEWOBJ(match, struct RMatch);
     OBJSETUP(match, klass, T_MATCH);
@@ -684,8 +650,7 @@ match_alloc(klass)
 
 /* :nodoc: */
 static VALUE
-match_init_copy(obj, orig)
-    VALUE obj, orig;
+match_init_copy(VALUE obj, VALUE orig)
 {
     if (obj == orig) return obj;
 
@@ -714,8 +679,7 @@ match_init_copy(obj, orig)
  */
 
 static VALUE
-match_size(match)
-    VALUE match;
+match_size(VALUE match)
 {
     return INT2FIX(RMATCH(match)->regs->num_regs);
 }
@@ -734,8 +698,7 @@ match_size(match)
  */
 
 static VALUE
-match_offset(match, n)
-    VALUE match, n;
+match_offset(VALUE match, VALUE n)
 {
     int i = NUM2INT(n);
 
@@ -763,8 +726,7 @@ match_offset(match, n)
  */
 
 static VALUE
-match_begin(match, n)
-    VALUE match, n;
+match_begin(VALUE match, VALUE n)
 {
     int i = NUM2INT(n);
 
@@ -791,8 +753,7 @@ match_begin(match, n)
  */
 
 static VALUE
-match_end(match, n)
-    VALUE match, n;
+match_end(VALUE match, VALUE n)
 {
     int i = NUM2INT(n);
 
@@ -808,8 +769,7 @@ match_end(match, n)
 #define MATCH_BUSY FL_USER2
 
 void
-rb_match_busy(match)
-    VALUE match;
+rb_match_busy(VALUE match)
 {
     FL_SET(match, MATCH_BUSY);
 }
@@ -818,8 +778,7 @@ int ruby_ignorecase;
 static int may_need_recompile;
 
 static void
-rb_reg_prepare_re(re)
-    VALUE re;
+rb_reg_prepare_re(VALUE re)
 {
     int need_recompile = 0;
     int state;
@@ -860,9 +819,7 @@ rb_reg_prepare_re(re)
 }
 
 long
-rb_reg_adjust_startpos(re, str, pos, reverse)
-    VALUE re, str;
-    long pos, reverse;
+rb_reg_adjust_startpos(VALUE re, VALUE str, long pos, long reverse)
 {
     long range;
 
@@ -886,9 +843,7 @@ rb_reg_adjust_startpos(re, str, pos, reverse)
 }
 
 long
-rb_reg_search(re, str, pos, reverse)
-    VALUE re, str;
-    long pos, reverse;
+rb_reg_search(VALUE re, VALUE str, long pos, long reverse)
 {
     long result;
     VALUE match;
@@ -954,9 +909,7 @@ rb_reg_search(re, str, pos, reverse)
 }
 
 VALUE
-rb_reg_nth_defined(nth, match)
-    int nth;
-    VALUE match;
+rb_reg_nth_defined(int nth, VALUE match)
 {
     if (NIL_P(match)) return Qnil;
     if (nth >= RMATCH(match)->regs->num_regs) {
@@ -971,9 +924,7 @@ rb_reg_nth_defined(nth, match)
 }
 
 VALUE
-rb_reg_nth_match(nth, match)
-    int nth;
-    VALUE match;
+rb_reg_nth_match(int nth, VALUE match)
 {
     VALUE str;
     long start, end, len;
@@ -996,8 +947,7 @@ rb_reg_nth_match(nth, match)
 }
 
 VALUE
-rb_reg_last_match(match)
-    VALUE match;
+rb_reg_last_match(VALUE match)
 {
     return rb_reg_nth_match(0, match);
 }
@@ -1015,8 +965,7 @@ rb_reg_last_match(match)
  */
 
 VALUE
-rb_reg_match_pre(match)
-    VALUE match;
+rb_reg_match_pre(VALUE match)
 {
     VALUE str;
 
@@ -1040,8 +989,7 @@ rb_reg_match_pre(match)
  */
 
 VALUE
-rb_reg_match_post(match)
-    VALUE match;
+rb_reg_match_post(VALUE match)
 {
     VALUE str;
     long pos;
@@ -1056,8 +1004,7 @@ rb_reg_match_post(match)
 }
 
 VALUE
-rb_reg_match_last(match)
-    VALUE match;
+rb_reg_match_last(VALUE match)
 {
     int i;
 
@@ -1095,9 +1042,7 @@ last_paren_match_getter()
 }
 
 static VALUE
-match_array(match, start)
-    VALUE match;
-    int start;
+match_array(VALUE match, int start)
 {
     struct re_registers *regs = RMATCH(match)->regs;
     VALUE ary = rb_ary_new2(regs->num_regs);
@@ -1146,8 +1091,7 @@ match_array(match, start)
  */
 
 static VALUE
-match_to_a(match)
-    VALUE match;
+match_to_a(VALUE match)
 {
     return match_array(match, 0);
 }
@@ -1166,8 +1110,7 @@ match_to_a(match)
  *     f4    #=> "8"
  */
 static VALUE
-match_captures(match)
-    VALUE match;
+match_captures(VALUE match)
 {
     return match_array(match, 1);
 }
@@ -1193,10 +1136,7 @@ match_captures(match)
  */
 
 static VALUE
-match_aref(argc, argv, match)
-    int argc;
-    VALUE *argv;
-    VALUE match;
+match_aref(int argc, VALUE *argv, VALUE match)
 {
     VALUE idx, rest;
 
@@ -1210,9 +1150,7 @@ match_aref(argc, argv, match)
 
 static VALUE match_entry _((VALUE, long));
 static VALUE
-match_entry(match, n)
-    VALUE match;
-    long n;
+match_entry(VALUE match, long n)
 {
     return rb_reg_nth_match(n, match);
 }
@@ -1231,10 +1169,7 @@ match_entry(match, n)
  */
 
 static VALUE
-match_values_at(argc, argv, match)
-    int argc;
-    VALUE *argv;
-    VALUE match;
+match_values_at(int argc, VALUE *argv, VALUE match)
 {
     return rb_values_at(match, RMATCH(match)->regs->num_regs, argc, argv, match_entry);
 }
@@ -1252,10 +1187,7 @@ match_values_at(argc, argv, match)
  */
 
 static VALUE
-match_select(argc, argv, match)
-    int argc;
-    VALUE *argv;
-    VALUE match;
+match_select(int argc, VALUE *argv, VALUE match)
 {
     if (argc > 0) {
 	rb_raise(rb_eArgError, "wrong number of arguments (%d for 0)", argc);
@@ -1291,8 +1223,7 @@ match_select(argc, argv, match)
  */
 
 static VALUE
-match_to_s(match)
-    VALUE match;
+match_to_s(VALUE match)
 {
     VALUE str = rb_reg_last_match(match);
 
@@ -1314,8 +1245,7 @@ match_to_s(match)
  */
 
 static VALUE
-match_string(match)
-    VALUE match;
+match_string(VALUE match)
 {
     return RMATCH(match)->str;	/* str is frozen */
 }
@@ -1372,17 +1302,7 @@ match_inspect(VALUE match)
 VALUE rb_cRegexp;
 
 static void
-rb_reg_initialize(obj, s, len, options)
-    VALUE obj;
-    const char *s;
-    long len;
-    int options;		/* CASEFOLD  = 1 */
-				/* EXTENDED  = 2 */
-				/* MULTILINE = 4 */
-				/* CODE_NONE = 16 */
-				/* CODE_EUC  = 32 */
-				/* CODE_SJIS = 48 */
-				/* CODE_UTF8 = 64 */
+rb_reg_initialize(VALUE obj, const char *s, long len, int options)
 {
     struct RRegexp *re = RREGEXP(obj);
 
@@ -1435,8 +1355,7 @@ rb_reg_initialize(obj, s, len, options)
 
 static VALUE rb_reg_s_alloc _((VALUE));
 static VALUE
-rb_reg_s_alloc(klass)
-    VALUE klass;
+rb_reg_s_alloc(VALUE klass)
 {
     NEWOBJ(re, struct RRegexp);
     OBJSETUP(re, klass, T_REGEXP);
@@ -1449,10 +1368,7 @@ rb_reg_s_alloc(klass)
 }
 
 VALUE
-rb_reg_new(s, len, options)
-    const char *s;
-    long len;
-    int options;
+rb_reg_new(const char *s, long len, int options)
 {
     VALUE re = rb_reg_s_alloc(rb_cRegexp);
 
@@ -1465,8 +1381,7 @@ static int kcode_cache;
 static VALUE reg_cache;
 
 VALUE
-rb_reg_regcomp(str)
-    VALUE str;
+rb_reg_regcomp(VALUE str)
 {
     volatile VALUE save_str = str;
     if (reg_cache && RREGEXP(reg_cache)->len == RSTRING(str)->len
@@ -1483,8 +1398,7 @@ rb_reg_regcomp(str)
 }
 
 static int
-rb_reg_cur_kcode(re)
-    VALUE re;
+rb_reg_cur_kcode(VALUE re)
 {
     if (FL_TEST(re, KCODE_FIXED)) {
 	return RBASIC(re)->flags & KCODE_MASK;
@@ -1500,8 +1414,7 @@ rb_reg_cur_kcode(re)
  */
 
 static VALUE
-rb_reg_hash(re)
-    VALUE re;
+rb_reg_hash(VALUE re)
 {
     int hashval, len;
     char *p;
@@ -1534,8 +1447,7 @@ rb_reg_hash(re)
  */
 
 static VALUE
-rb_reg_equal(re1, re2)
-    VALUE re1, re2;
+rb_reg_equal(VALUE re1, VALUE re2)
 {
     if (re1 == re2) return Qtrue;
     if (TYPE(re2) != T_REGEXP) return Qfalse;
@@ -1562,8 +1474,7 @@ rb_reg_equal(re1, re2)
  */
 
 VALUE
-rb_reg_match(re, str)
-    VALUE re, str;
+rb_reg_match(VALUE re, VALUE str)
 {
     long start;
 
@@ -1599,8 +1510,7 @@ rb_reg_match(re, str)
  */
 
 VALUE
-rb_reg_eqq(re, str)
-    VALUE re, str;
+rb_reg_eqq(VALUE re, VALUE str)
 {
     long start;
 
@@ -1632,8 +1542,7 @@ rb_reg_eqq(re, str)
  */
 
 VALUE
-rb_reg_match2(re)
-    VALUE re;
+rb_reg_match2(VALUE re)
 {
     long start;
     VALUE line = rb_lastline_get();
@@ -1663,8 +1572,7 @@ rb_reg_match2(re)
  */
 
 static VALUE
-rb_reg_match_m(re, str)
-    VALUE re, str;
+rb_reg_match_m(VALUE re, VALUE str)
 {
     VALUE result = rb_reg_match(re, str);
 
@@ -1705,10 +1613,7 @@ rb_reg_match_m(re, str)
  */
 
 static VALUE
-rb_reg_initialize_m(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
+rb_reg_initialize_m(int argc, VALUE *argv, VALUE self)
 {
     const char *s;
     long len;
@@ -1778,8 +1683,7 @@ rb_reg_initialize_m(argc, argv, self)
 }
 
 VALUE
-rb_reg_quote(str)
-    VALUE str;
+rb_reg_quote(VALUE str)
 {
     char *s, *send, *t;
     VALUE tmp;
@@ -1877,9 +1781,7 @@ rb_reg_quote(str)
  */
 
 static VALUE
-rb_reg_s_quote(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_reg_s_quote(int argc, VALUE *argv)
 {
     VALUE str, kcode;
     int kcode_saved = reg_kcode;
@@ -1913,8 +1815,7 @@ rb_kcode()
 }
 
 static int
-rb_reg_get_kcode(re)
-    VALUE re;
+rb_reg_get_kcode(VALUE re)
 {
     switch (RBASIC(re)->flags & KCODE_MASK) {
       case KCODE_NONE:
@@ -1931,8 +1832,7 @@ rb_reg_get_kcode(re)
 }
 
 int
-rb_reg_options(re)
-    VALUE re;
+rb_reg_options(VALUE re)
 {
     int options;
 
@@ -1946,9 +1846,7 @@ rb_reg_options(re)
 }
 
 static VALUE
-rb_reg_s_union(self, args0)
-    VALUE self;
-    VALUE args0;
+rb_reg_s_union(VALUE self, VALUE args0)
 {
     long argc = RARRAY_LEN(args0);
     if (argc == 0) {
@@ -2052,8 +1950,7 @@ rb_reg_s_union_m(VALUE self, VALUE args)
 
 /* :nodoc: */
 static VALUE
-rb_reg_init_copy(copy, re)
-    VALUE copy, re;
+rb_reg_init_copy(VALUE copy, VALUE re)
 {
     if (copy == re) return copy;
     rb_check_frozen(copy);
@@ -2068,9 +1965,7 @@ rb_reg_init_copy(copy, re)
 }
 
 VALUE
-rb_reg_regsub(str, src, regs)
-    VALUE str, src;
-    struct re_registers *regs;
+rb_reg_regsub(VALUE str, VALUE src, struct re_registers *regs)
 {
     VALUE val = 0;
     char *p, *s, *e, c;
@@ -2174,8 +2069,7 @@ kcode_getter()
 }
 
 void
-rb_set_kcode(code)
-    const char *code;
+rb_set_kcode(const char *code)
 {
     if (code == 0) goto set_no_conversion;
 
@@ -2208,8 +2102,7 @@ rb_set_kcode(code)
 }
 
 static void
-kcode_setter(val)
-    VALUE val;
+kcode_setter(VALUE val)
 {
     may_need_recompile = 1;
     rb_set_kcode(StringValuePtr(val));
@@ -2222,9 +2115,7 @@ ignorecase_getter()
 }
 
 static void
-ignorecase_setter(val, id)
-    VALUE val;
-    ID id;
+ignorecase_setter(VALUE val, ID id)
 {
     rb_warn("modifying %s is deprecated", rb_id2name(id));
     may_need_recompile = 1;
@@ -2242,8 +2133,7 @@ match_getter()
 }
 
 static void
-match_setter(val)
-    VALUE val;
+match_setter(VALUE val)
 {
     if (!NIL_P(val)) {
 	Check_Type(val, T_MATCH);
@@ -2269,9 +2159,7 @@ match_setter(val)
  */
 
 static VALUE
-rb_reg_s_last_match(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_reg_s_last_match(int argc, VALUE *argv)
 {
     VALUE nth;
 

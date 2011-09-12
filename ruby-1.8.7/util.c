@@ -28,10 +28,7 @@ char *strchr _((char*,char));
 #endif
 
 unsigned long
-scan_oct(start, len, retlen)
-    const char *start;
-    int len;
-    int *retlen;
+scan_oct(const char *start, int len, int *retlen)
 {
     register const char *s = start;
     register unsigned long retval = 0;
@@ -45,10 +42,7 @@ scan_oct(start, len, retlen)
 }
 
 unsigned long
-scan_hex(start, len, retlen)
-    const char *start;
-    int len;
-    int *retlen;
+scan_hex(const char *start, int len, int *retlen)
 {
     static char hexdigit[] = "0123456789abcdef0123456789ABCDEF";
     register const char *s = start;
@@ -157,9 +151,7 @@ static char suffix2[] = ".~~~";
 #define strEQ(s1,s2) (strcmp(s1,s2) == 0)
 
 void
-ruby_add_suffix(str, suffix)
-    VALUE str;
-    char *suffix;
+ruby_add_suffix(VALUE str, char *suffix)
 {
     int baselen;
     int extlen = strlen(suffix);
@@ -400,9 +392,7 @@ __crt0_glob_function(char *path)
 
 #define mmarg mmkind, size, high, low
 
-static void mmswap_(a, b, mmarg)
-    register char *a, *b;
-    int mmarg;
+static void mmswap_(register char *a, register char *b, int mmkind, int size, int high, int low)
 {
  register int s;
  if (a == b) return;
@@ -427,9 +417,7 @@ static void mmswap_(a, b, mmarg)
 }
 #define mmswap(a,b) mmswap_((a),(b),mmarg)
 
-static void mmrot3_(a, b, c, mmarg)
-    register char *a, *b, *c;
-    int mmarg;
+static void mmrot3_(register char *a, register char *b, register char *c, int mmkind, int size, int high, int low)
 {
  register int s;
  if (mmkind >= 0) {
@@ -470,12 +458,7 @@ typedef struct { char *LL, *RR; } stack_node; /* Stack structure for L,l,R,r */
                        ((*cmp)(b,c,d)<0 ? b : ((*cmp)(a,c,d)<0 ? c : a)) : \
                        ((*cmp)(b,c,d)>0 ? b : ((*cmp)(a,c,d)<0 ? a : c)))
 
-void ruby_qsort (base, nel, size, cmp, d)
-     void* base;
-     const int nel;
-     const int size;
-     int (*cmp)();
-     void *d;
+void ruby_qsort (void* base, const int nel, const int size, int (*cmp)(...), void *d)
 {
   register char *l, *r, *m;          	/* l,r:left,right group   m:median point */
   register int  t, eq_l, eq_r;       	/* eq_l: all items in left group are equal to S */
@@ -623,8 +606,7 @@ void ruby_qsort (base, nel, size, cmp, d)
 }
 
 char *
-ruby_strdup(str)
-    const char *str;
+ruby_strdup(const char *str)
 {
     char *tmp;
     int len = strlen(str) + 1;

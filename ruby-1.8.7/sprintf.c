@@ -24,9 +24,7 @@
 static void fmt_setup _((char*,int,int,int,int));
 
 static char*
-remove_sign_bits(str, base)
-    char *str;
-    int base;
+remove_sign_bits(char *str, int base)
 {
     char *s, *t;
     
@@ -57,9 +55,7 @@ remove_sign_bits(str, base)
 }
 
 static char
-sign_bits(base, p)
-    int base;
-    const char *p;
+sign_bits(int base, const char *p)
 {
     char c = '.';
 
@@ -245,9 +241,7 @@ sign_bits(base, p)
  */
 
 VALUE
-rb_f_sprintf(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_sprintf(int argc, VALUE *argv)
 {
     VALUE fmt;
     const char *p, *end;
@@ -812,10 +806,7 @@ rb_f_sprintf(argc, argv)
 }
 
 static void
-fmt_setup(buf, c, flags, width, prec)
-    char *buf;
-    int c;
-    int flags, width, prec;
+fmt_setup(char *buf, int c, int flags, int width, int prec)
 {
     *buf++ = '%';
     if (flags & FSHARP) *buf++ = '#';

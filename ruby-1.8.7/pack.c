@@ -135,8 +135,7 @@ define_swapx(f,float)
 #else
 #if SIZEOF_LONG == 4	/* SIZEOF_DOUBLE == 8 && 4 == SIZEOF_LONG */
 static double
-swapd(d)
-    const double d;
+swapd(const double d)
 {
     double dtmp = d;
     unsigned long utmp[2];
@@ -153,8 +152,7 @@ swapd(d)
 #else
 #if SIZEOF_SHORT == 4	/* SIZEOF_DOUBLE == 8 && 4 == SIZEOF_SHORT */
 static double
-swapd(d)
-    const double d;
+swapd(const double d)
 {
     double dtmp = d;
     unsigned short utmp[2];
@@ -334,8 +332,7 @@ endian()
 unsigned long rb_big2ulong_pack _((VALUE x));
 
 static unsigned long
-num2i32(x)
-    VALUE x;
+num2i32(VALUE x)
 {
     x = rb_to_int(x); /* is nil OK? (should not) */
 
@@ -438,8 +435,7 @@ static unsigned long utf8_to_uv _((char*,long*));
  */
 
 static VALUE
-pack_pack(ary, fmt)
-    VALUE ary, fmt;
+pack_pack(VALUE ary, VALUE fmt)
 {
     static const char nul10[] = "\0\0\0\0\0\0\0\0\0\0";
     static const char spc10[] = "          ";
@@ -1010,11 +1006,7 @@ static const char b64_table[] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void
-encodes(str, s, len, type)
-    VALUE str;
-    const char *s;
-    long len;
-    int type;
+encodes(VALUE str, const char *s, long len, int type)
 {
     char *buff = ALLOCA_N(char, len * 4 / 3 + 6);
     long i = 0;
@@ -1055,9 +1047,7 @@ encodes(str, s, len, type)
 static char hex_table[] = "0123456789ABCDEF";
 
 static void
-qpencode(str, from, len)
-    VALUE str, from;
-    long len;
+qpencode(VALUE str, VALUE from, long len)
 {
     char buff[1024];
     long i = 0, n = 0, prev = EOF;
@@ -1110,8 +1100,7 @@ qpencode(str, from, len)
 }
 
 static inline int
-hex2num(c)
-    char c;
+hex2num(char c)
 {
     switch (c) {
     case '0': case '1': case '2': case '3': case '4':
@@ -1151,10 +1140,7 @@ hex2num(c)
 #define PACK_ITEM_ADJUST() while (tmp--) rb_ary_push(ary, Qnil)
 
 static VALUE
-infected_str_new(ptr, len, str)
-    const char *ptr;
-    long len;
-    VALUE str;
+infected_str_new(const char *ptr, long len, VALUE str)
 {
     VALUE s = rb_str_new(ptr, len);
 
@@ -1301,8 +1287,7 @@ infected_str_new(ptr, len, str)
  */
 
 static VALUE
-pack_unpack(str, fmt)
-    VALUE str, fmt;
+pack_unpack(VALUE str, VALUE fmt)
 {
     static const char hexdigits[] = "0123456789abcdef0123456789ABCDEFx";
     char *s, *send;
@@ -2004,9 +1989,7 @@ pack_unpack(str, fmt)
 #define BYTEWIDTH 8
 
 static int
-uv_to_utf8(buf, uv)
-    char *buf;
-    unsigned long uv;
+uv_to_utf8(char *buf, unsigned long uv)
 {
     if (uv <= 0x7f) {
 	buf[0] = (char)uv;
@@ -2061,9 +2044,7 @@ static const unsigned long utf8_limits[] = {
 };
 
 static unsigned long
-utf8_to_uv(p, lenp)
-    char *p;
-    long *lenp;
+utf8_to_uv(char *p, long *lenp)
 {
     int c = *p++ & 0xff;
     unsigned long uv = c;

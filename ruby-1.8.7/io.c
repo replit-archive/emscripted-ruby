@@ -209,8 +209,7 @@ rb_eof_error()
 }
 
 VALUE
-rb_io_taint_check(io)
-    VALUE io;
+rb_io_taint_check(VALUE io)
 {
     if (!OBJ_TAINTED(io) && rb_safe_level() >= 4)
 	rb_raise(rb_eSecurityError, "Insecure: operation on untainted IO");
@@ -219,8 +218,7 @@ rb_io_taint_check(io)
 }
 
 void
-rb_io_check_initialized(fptr)
-    rb_io_t *fptr;
+rb_io_check_initialized(rb_io_t *fptr)
 {
     if (!fptr) {
 	rb_raise(rb_eIOError, "uninitialized stream");
@@ -228,8 +226,7 @@ rb_io_check_initialized(fptr)
 }
 
 void
-rb_io_check_closed(fptr)
-    rb_io_t *fptr;
+rb_io_check_closed(rb_io_t *fptr)
 {
     rb_io_check_initialized(fptr);
     if (!fptr->f && !fptr->f2) {
@@ -240,8 +237,7 @@ rb_io_check_closed(fptr)
 static void io_fflush _((FILE *, rb_io_t *));
 
 static rb_io_t *
-flush_before_seek(fptr)
-    rb_io_t *fptr;
+flush_before_seek(rb_io_t *fptr)
 {
     if (fptr->mode & FMODE_WBUF) {
 	io_fflush(GetWriteFile(fptr), fptr);
@@ -262,8 +258,7 @@ flush_before_seek(fptr)
 #define FMODE_SYNCWRITE (FMODE_SYNC|FMODE_WRITABLE)
 
 void
-rb_io_check_readable(fptr)
-    rb_io_t *fptr;
+rb_io_check_readable(rb_io_t *fptr)
 {
     rb_io_check_closed(fptr);
     if (!(fptr->mode & FMODE_READABLE)) {
@@ -281,8 +276,7 @@ rb_io_check_readable(fptr)
 }
 
 void
-rb_io_check_writable(fptr)
-    rb_io_t *fptr;
+rb_io_check_writable(rb_io_t *fptr)
 {
     rb_io_check_closed(fptr);
     if (!(fptr->mode & FMODE_WRITABLE)) {
@@ -297,15 +291,13 @@ rb_io_check_writable(fptr)
 }
 
 int
-rb_read_pending(fp)
-    FILE *fp;
+rb_read_pending(FILE *fp)
 {
     return READ_DATA_PENDING(fp);
 }
 
 void
-rb_read_check(fp)
-    FILE *fp;
+rb_read_check(FILE *fp)
 {
     if (!READ_DATA_PENDING(fp)) {
 	rb_thread_wait_fd(fileno(fp));
@@ -313,8 +305,7 @@ rb_read_check(fp)
 }
 
 static int
-ruby_dup(orig)
-    int orig;
+ruby_dup(int orig)
 {
     int fd;
 
@@ -333,8 +324,7 @@ ruby_dup(orig)
 
 static VALUE io_alloc _((VALUE));
 static VALUE
-io_alloc(klass)
-    VALUE klass;
+io_alloc(VALUE klass)
 {
     NEWOBJ(io, struct RFile);
     OBJSETUP(io, klass, T_FILE);
@@ -345,9 +335,7 @@ io_alloc(klass)
 }
 
 static void
-io_fflush(f, fptr)
-    FILE *f;
-    rb_io_t *fptr;
+io_fflush(FILE *f, rb_io_t *fptr)
 {
     int n;
 
@@ -366,8 +354,7 @@ io_fflush(f, fptr)
 }
 
 int
-rb_io_wait_readable(f)
-    int f;
+rb_io_wait_readable(int f)
 {
     fd_set rfds;
 
@@ -394,8 +381,7 @@ rb_io_wait_readable(f)
 }
 
 int
-rb_io_wait_writable(f)
-    int f;
+rb_io_wait_writable(int f)
 {
     fd_set wfds;
 
@@ -448,9 +434,7 @@ wsplit_p(rb_io_t *fptr)
 
 /* writing functions */
 static long
-io_fwrite(str, fptr)
-    VALUE str;
-    rb_io_t *fptr;
+io_fwrite(VALUE str, rb_io_t *fptr)
 {
     long len, n, r, l, offset = 0;
     FILE *f = GetWriteFile(fptr);
@@ -525,10 +509,7 @@ io_fwrite(str, fptr)
 }
 
 long
-rb_io_fwrite(ptr, len, f)
-    const char *ptr;
-    long len;
-    FILE *f;
+rb_io_fwrite(const char *ptr, long len, FILE *f)
 {
     rb_io_t of;
 
@@ -558,8 +539,7 @@ rb_io_fwrite(ptr, len, f)
  */
 
 static VALUE
-io_write(io, str)
-    VALUE io, str;
+io_write(VALUE io, VALUE str)
 {
     rb_io_t *fptr;
     long n;
@@ -587,8 +567,7 @@ io_write(io, str)
 }
 
 VALUE
-rb_io_write(io, str)
-    VALUE io, str;
+rb_io_write(VALUE io, VALUE str)
 {
     return rb_funcall(io, id_write, 1, str);
 }
@@ -609,8 +588,7 @@ rb_io_write(io, str)
  */
 
 VALUE
-rb_io_addstr(io, str)
-    VALUE io, str;
+rb_io_addstr(VALUE io, VALUE str)
 {
     rb_io_write(io, str);
     return io;
@@ -633,8 +611,7 @@ rb_io_addstr(io, str)
  */
 
 static VALUE
-rb_io_flush(io)
-    VALUE io;
+rb_io_flush(VALUE io)
 {
     rb_io_t *fptr;
     FILE *f;
@@ -662,8 +639,7 @@ rb_io_flush(io)
  */
 
 static VALUE
-rb_io_tell(io)
-     VALUE io;
+rb_io_tell(VALUE io)
 {
     rb_io_t *fptr;
     off_t pos;
@@ -675,9 +651,7 @@ rb_io_tell(io)
 }
 
 static VALUE
-rb_io_seek(io, offset, whence)
-    VALUE io, offset;
-    int whence;
+rb_io_seek(VALUE io, VALUE offset, int whence)
 {
     rb_io_t *fptr;
     off_t pos;
@@ -713,10 +687,7 @@ rb_io_seek(io, offset, whence)
  */
 
 static VALUE
-rb_io_seek_m(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_seek_m(int argc, VALUE *argv, VALUE io)
 {
     VALUE offset, ptrname;
     int whence = SEEK_SET;
@@ -740,8 +711,7 @@ rb_io_seek_m(argc, argv, io)
  */
 
 static VALUE
-rb_io_set_pos(io, offset)
-     VALUE io, offset;
+rb_io_set_pos(VALUE io, VALUE offset)
 {
     rb_io_t *fptr;
     off_t pos;
@@ -770,8 +740,7 @@ rb_io_set_pos(io, offset)
  */
 
 static VALUE
-rb_io_rewind(io)
-    VALUE io;
+rb_io_rewind(VALUE io)
 {
     rb_io_t *fptr;
 
@@ -819,8 +788,7 @@ rb_io_rewind(io)
  */
 
 VALUE
-rb_io_eof(io)
-    VALUE io;
+rb_io_eof(VALUE io)
 {
     rb_io_t *fptr;
     int ch;
@@ -859,8 +827,7 @@ rb_io_eof(io)
  */
 
 static VALUE
-rb_io_sync(io)
-    VALUE io;
+rb_io_sync(VALUE io)
 {
     rb_io_t *fptr;
 
@@ -884,8 +851,7 @@ rb_io_sync(io)
  */
 
 static VALUE
-rb_io_set_sync(io, mode)
-    VALUE io, mode;
+rb_io_set_sync(VALUE io, VALUE mode)
 {
     rb_io_t *fptr;
 
@@ -912,8 +878,7 @@ rb_io_set_sync(io, mode)
  */
 
 static VALUE
-rb_io_fsync(io)
-    VALUE io;
+rb_io_fsync(VALUE io)
 {
 #ifdef HAVE_FSYNC
     rb_io_t *fptr;
@@ -945,8 +910,7 @@ rb_io_fsync(io)
  */
 
 static VALUE
-rb_io_fileno(io)
-    VALUE io;
+rb_io_fileno(VALUE io)
 {
     rb_io_t *fptr;
     int fd;
@@ -977,8 +941,7 @@ rb_io_fileno(io)
  */
 
 static VALUE
-rb_io_pid(io)
-    VALUE io;
+rb_io_pid(VALUE io)
 {
     rb_io_t *fptr;
 
@@ -996,8 +959,7 @@ rb_io_pid(io)
  */
 
 static VALUE
-rb_io_inspect(obj)
-    VALUE obj;
+rb_io_inspect(VALUE obj)
 {
     rb_io_t *fptr;
     char *buf;
@@ -1025,18 +987,14 @@ rb_io_inspect(obj)
  */
 
 static VALUE
-rb_io_to_io(io)
-    VALUE io;
+rb_io_to_io(VALUE io)
 {
     return io;
 }
 
 /* reading functions */
 static long
-read_buffered_data(ptr, len, f)
-    char *ptr;
-    long len;
-    FILE *f;
+read_buffered_data(char *ptr, long len, FILE *f)
 {
     long n;
 
@@ -1056,10 +1014,7 @@ read_buffered_data(ptr, len, f)
 }
 
 static long
-io_fread(ptr, len, fptr)
-    char *ptr;
-    long len;
-    rb_io_t *fptr;
+io_fread(char *ptr, long len, rb_io_t *fptr)
 {
     long n = len;
     int c;
@@ -1110,10 +1065,7 @@ io_fread(ptr, len, fptr)
 }
 
 long
-rb_io_fread(ptr, len, f)
-    char *ptr;
-    long len;
-    FILE *f;
+rb_io_fread(char *ptr, long len, FILE *f)
 {
     rb_io_t of;
 
@@ -1125,8 +1077,7 @@ rb_io_fread(ptr, len, f)
 #define SMALLBUF 100
 
 static long
-remain_size(fptr)
-    rb_io_t *fptr;
+remain_size(rb_io_t *fptr)
 {
     struct stat st;
     off_t siz = BUFSIZ;
@@ -1151,10 +1102,7 @@ remain_size(fptr)
 }
 
 static VALUE
-read_all(fptr, siz, str)
-    rb_io_t *fptr;
-    long siz;
-    VALUE str;
+read_all(rb_io_t *fptr, long siz, VALUE str)
 {
     long bytes = 0;
     long n;
@@ -1451,10 +1399,7 @@ rb_io_write_nonblock(VALUE io, VALUE str)
  */
 
 static VALUE
-io_read(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+io_read(int argc, VALUE *argv, VALUE io)
 {
     rb_io_t *fptr;
     long n, len;
@@ -1511,10 +1456,7 @@ io_read(argc, argv, io)
 }
 
 static int
-appendline(fptr, delim, strp)
-    rb_io_t *fptr;
-    int delim;
-    VALUE *strp;
+appendline(rb_io_t *fptr, int delim, VALUE *strp)
 {
     FILE *f = fptr->f;
     VALUE str = *strp;
@@ -1616,9 +1558,7 @@ appendline(fptr, delim, strp)
 }
 
 static inline int
-swallow(fptr, term)
-    rb_io_t *fptr;
-    int term;
+swallow(rb_io_t *fptr, int term)
 {
     FILE *f = fptr->f;
     int c;
@@ -1655,9 +1595,7 @@ swallow(fptr, term)
 }
 
 static VALUE
-rb_io_getline_fast(fptr, delim)
-    rb_io_t *fptr;
-    unsigned char delim;
+rb_io_getline_fast(rb_io_t *fptr, unsigned char delim)
 {
     VALUE str = Qnil;
     int c;
@@ -1674,10 +1612,7 @@ rb_io_getline_fast(fptr, delim)
 }
 
 static int
-rscheck(rsptr, rslen, rs)
-    char *rsptr;
-    long rslen;
-    VALUE rs;
+rscheck(char *rsptr, long rslen, VALUE rs)
 {
     if (RSTRING(rs)->ptr != rsptr && RSTRING(rs)->len != rslen)
 	rb_raise(rb_eRuntimeError, "rs modified");
@@ -1687,8 +1622,7 @@ rscheck(rsptr, rslen, rs)
 static VALUE rb_io_getline(VALUE rs, VALUE io);
 
 static VALUE
-rb_io_getline(rs, io)
-    VALUE rs, io;
+rb_io_getline(VALUE rs, VALUE io)
 {
     VALUE str = Qnil;
     rb_io_t *fptr;
@@ -1745,8 +1679,7 @@ rb_io_getline(rs, io)
 }
 
 VALUE
-rb_io_gets(io)
-    VALUE io;
+rb_io_gets(VALUE io)
 {
     rb_io_t *fptr;
 
@@ -1773,10 +1706,7 @@ rb_io_gets(io)
  */
 
 static VALUE
-rb_io_gets_m(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_gets_m(int argc, VALUE *argv, VALUE io)
 {
     VALUE rs, str;
 
@@ -1813,8 +1743,7 @@ rb_io_gets_m(argc, argv, io)
  */
 
 static VALUE
-rb_io_lineno(io)
-    VALUE io;
+rb_io_lineno(VALUE io)
 {
     rb_io_t *fptr;
 
@@ -1841,8 +1770,7 @@ rb_io_lineno(io)
  */
 
 static VALUE
-rb_io_set_lineno(io, lineno)
-    VALUE io, lineno;
+rb_io_set_lineno(VALUE io, VALUE lineno)
 {
     rb_io_t *fptr;
 
@@ -1853,18 +1781,14 @@ rb_io_set_lineno(io, lineno)
 }
 
 static void
-lineno_setter(val, id, var)
-    VALUE val;
-    ID id;
-    VALUE *var;
+lineno_setter(VALUE val, ID id, VALUE *var)
 {
     gets_lineno = NUM2INT(val);
     *var = INT2FIX(gets_lineno);
 }
 
 static VALUE
-argf_set_lineno(argf, val)
-    VALUE argf, val;
+argf_set_lineno(VALUE argf, VALUE val)
 {
     gets_lineno = NUM2INT(val);
     lineno = INT2FIX(gets_lineno);
@@ -1886,10 +1810,7 @@ argf_lineno()
  */
 
 static VALUE
-rb_io_readline(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_readline(int argc, VALUE *argv, VALUE io)
 {
     VALUE line = rb_io_gets_m(argc, argv, io);
 
@@ -1915,10 +1836,7 @@ rb_io_readline(argc, argv, io)
  */
 
 static VALUE
-rb_io_readlines(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_readlines(int argc, VALUE *argv, VALUE io)
 {
     VALUE line, ary;
     VALUE rs;
@@ -1958,10 +1876,7 @@ rb_io_readlines(argc, argv, io)
  */
 
 static VALUE
-rb_io_each_line(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_each_line(int argc, VALUE *argv, VALUE io)
 {
     VALUE str;
     VALUE rs;
@@ -1995,8 +1910,7 @@ rb_io_each_line(argc, argv, io)
  */
 
 static VALUE
-rb_io_each_byte(io)
-    VALUE io;
+rb_io_each_byte(VALUE io)
 {
     rb_io_t *fptr;
     FILE *f;
@@ -2044,8 +1958,7 @@ VALUE rb_io_getc _((VALUE));
  */
 
 static VALUE
-rb_io_each_char(io)
-    VALUE io;
+rb_io_each_char(VALUE io)
 {
     VALUE ch;
 
@@ -2090,10 +2003,7 @@ rb_io_each_char(io)
  */
 
 static VALUE
-rb_io_lines(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_lines(int argc, VALUE *argv, VALUE io)
 {
     return rb_enumeratorize(io, ID2SYM(rb_intern("each_line")), argc, argv);
 }
@@ -2113,8 +2023,7 @@ rb_io_lines(argc, argv, io)
  */
 
 static VALUE
-rb_io_bytes(io)
-    VALUE io;
+rb_io_bytes(VALUE io)
 {
     return rb_enumeratorize(io, ID2SYM(rb_intern("each_byte")), 0, 0);
 }
@@ -2132,8 +2041,7 @@ rb_io_bytes(io)
  */
 
 VALUE
-rb_io_getc(io)
-    VALUE io;
+rb_io_getc(VALUE io)
 {
     rb_io_t *fptr;
     FILE *f;
@@ -2163,8 +2071,7 @@ rb_io_getc(io)
 }
 
 int
-rb_getc(f)
-    FILE *f;
+rb_getc(FILE *f)
 {
     int c;
 
@@ -2188,8 +2095,7 @@ rb_getc(f)
  */
 
 static VALUE
-rb_io_readchar(io)
-    VALUE io;
+rb_io_readchar(VALUE io)
 {
     VALUE c = rb_io_getc(io);
 
@@ -2216,8 +2122,7 @@ rb_io_readchar(io)
  */
 
 VALUE
-rb_io_ungetc(io, c)
-    VALUE io, c;
+rb_io_ungetc(VALUE io, VALUE c)
 {
     rb_io_t *fptr;
     int cc = NUM2INT(c);
@@ -2246,8 +2151,7 @@ rb_io_ungetc(io, c)
  */
 
 static VALUE
-rb_io_isatty(io)
-    VALUE io;
+rb_io_isatty(VALUE io)
 {
     rb_io_t *fptr;
 
@@ -2258,9 +2162,7 @@ rb_io_isatty(io)
 }
 
 static void
-fptr_finalize(fptr, noraise)
-    rb_io_t *fptr;
-    int noraise;
+fptr_finalize(rb_io_t *fptr, int noraise)
 {
     int n1 = 0, n2 = 0, f1, f2 = -1;
 
@@ -2303,9 +2205,7 @@ fptr_finalize(fptr, noraise)
 }
 
 static void
-rb_io_fptr_cleanup(fptr, noraise)
-    rb_io_t *fptr;
-    int noraise;
+rb_io_fptr_cleanup(rb_io_t *fptr, int noraise)
 {
     if (fptr->finalize) {
 	(*fptr->finalize)(fptr, noraise);
@@ -2316,8 +2216,7 @@ rb_io_fptr_cleanup(fptr, noraise)
 }
 
 void
-rb_io_fptr_finalize(fptr)
-    rb_io_t *fptr;
+rb_io_fptr_finalize(rb_io_t *fptr)
 {
     if (!fptr) return;
     if (fptr->path) {
@@ -2330,8 +2229,7 @@ rb_io_fptr_finalize(fptr)
 }
 
 VALUE
-rb_io_close(io)
-    VALUE io;
+rb_io_close(VALUE io)
 {
     rb_io_t *fptr;
     int fd, fd2;
@@ -2374,8 +2272,7 @@ rb_io_close(io)
  */
 
 static VALUE
-rb_io_close_m(io)
-    VALUE io;
+rb_io_close_m(VALUE io)
 {
     if (rb_safe_level() >= 4 && !OBJ_TAINTED(io)) {
 	rb_raise(rb_eSecurityError, "Insecure: can't close");
@@ -2386,15 +2283,13 @@ rb_io_close_m(io)
 }
 
 static VALUE
-io_call_close(io)
-    VALUE io;
+io_call_close(VALUE io)
 {
     return rb_funcall(io, rb_intern("close"), 0, 0);
 }
 
 static VALUE
-io_close(io)
-    VALUE io;
+io_close(VALUE io)
 {
     return rb_rescue(io_call_close, io, 0, 0);
 }
@@ -2418,8 +2313,7 @@ io_close(io)
  */
 
 static VALUE
-rb_io_closed(io)
-    VALUE io;
+rb_io_closed(VALUE io)
 {
     rb_io_t *fptr;
 
@@ -2447,8 +2341,7 @@ rb_io_closed(io)
  */
 
 static VALUE
-rb_io_close_read(io)
-    VALUE io;
+rb_io_close_read(VALUE io)
 {
     rb_io_t *fptr;
     int n;
@@ -2492,8 +2385,7 @@ rb_io_close_read(io)
  */
 
 static VALUE
-rb_io_close_write(io)
-    VALUE io;
+rb_io_close_write(VALUE io)
 {
     rb_io_t *fptr;
     int n;
@@ -2530,10 +2422,7 @@ rb_io_close_write(io)
  */
 
 static VALUE
-rb_io_sysseek(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_sysseek(int argc, VALUE *argv, VALUE io)
 {
     VALUE offset, ptrname;
     int whence = SEEK_SET;
@@ -2572,8 +2461,7 @@ rb_io_sysseek(argc, argv, io)
  */
 
 static VALUE
-rb_io_syswrite(io, str)
-    VALUE io, str;
+rb_io_syswrite(VALUE io, VALUE str)
 {
     rb_io_t *fptr;
     FILE *f;
@@ -2617,10 +2505,7 @@ rb_io_syswrite(io, str)
  */
 
 static VALUE
-rb_io_sysread(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_sysread(int argc, VALUE *argv, VALUE io)
 {
     VALUE len, str;
     rb_io_t *fptr;
@@ -2682,8 +2567,7 @@ rb_io_sysread(argc, argv, io)
  */
 
 VALUE
-rb_io_binmode(io)
-    VALUE io;
+rb_io_binmode(VALUE io)
 {
 #if defined(_WIN32) || defined(DJGPP) || defined(__CYGWIN__) || defined(__human68k__) || defined(__EMX__)
     rb_io_t *fptr;
@@ -2707,8 +2591,7 @@ rb_io_binmode(io)
 }
 
 const char*
-rb_io_flags_mode(flags)
-    int flags;
+rb_io_flags_mode(int flags)
 {
 #ifdef O_BINARY
 # define MODE_BINMODE(a,b) ((flags & FMODE_BINMODE) ? (b) : (a))
@@ -2737,8 +2620,7 @@ rb_io_flags_mode(flags)
 }
 
 int
-rb_io_mode_flags(mode)
-    const char *mode;
+rb_io_mode_flags(const char *mode)
 {
     int flags = 0;
     const char *m = mode;
@@ -2780,8 +2662,7 @@ rb_io_mode_flags(mode)
 }
 
 int
-rb_io_modenum_flags(mode)
-    int mode;
+rb_io_modenum_flags(int mode)
 {
     int flags = 0;
 
@@ -2813,8 +2694,7 @@ rb_io_modenum_flags(mode)
 }
 
 static int
-rb_io_mode_modenum(mode)
-    const char *mode;
+rb_io_mode_modenum(const char *mode)
 {
     int flags = 0;
     const char *m = mode;
@@ -2860,8 +2740,7 @@ rb_io_mode_modenum(mode)
 #define MODENUM_MAX 4
 
 static const char*
-rb_io_modenum_mode(flags)
-    int flags;
+rb_io_modenum_mode(int flags)
 {
 #ifdef O_BINARY
 # define MODE_BINARY(a,b) ((flags & O_BINARY) ? (b) : (a))
@@ -2887,10 +2766,7 @@ rb_io_modenum_mode(flags)
 }
 
 static int
-rb_sysopen(fname, flags, mode)
-    char *fname;
-    int flags;
-    unsigned int mode;
+rb_sysopen(char *fname, int flags, unsigned int mode)
 {
     int fd;
 
@@ -2908,9 +2784,7 @@ rb_sysopen(fname, flags, mode)
 }
 
 FILE *
-rb_fopen(fname, mode)
-    const char *fname;
-    const char *mode;
+rb_fopen(const char *fname, const char *mode)
 {
     FILE *file;
 
@@ -2935,9 +2809,7 @@ rb_fopen(fname, mode)
 }
 
 FILE *
-rb_fdopen(fd, mode)
-    int fd;
-    const char *mode;
+rb_fdopen(int fd, const char *mode)
 {
     FILE *file;
 
@@ -2976,9 +2848,7 @@ rb_fdopen(fd, mode)
 }
 
 static VALUE
-rb_file_open_internal(io, fname, mode)
-    VALUE io;
-    const char *fname, *mode;
+rb_file_open_internal(VALUE io, const char *fname, const char *mode)
 {
     rb_io_t *fptr;
 
@@ -2992,17 +2862,13 @@ rb_file_open_internal(io, fname, mode)
 }
 
 VALUE
-rb_file_open(fname, mode)
-    const char *fname, *mode;
+rb_file_open(const char *fname, const char *mode)
 {
     return rb_file_open_internal(io_alloc(rb_cFile), fname, mode);
 }
 
 static VALUE
-rb_file_sysopen_internal(io, fname, flags, mode)
-    VALUE io;
-    char *fname;
-    int flags, mode;
+rb_file_sysopen_internal(VALUE io, char *fname, int flags, int mode)
 {
     rb_io_t *fptr;
     int fd;
@@ -3020,9 +2886,7 @@ rb_file_sysopen_internal(io, fname, flags, mode)
 }
 
 VALUE
-rb_file_sysopen(fname, flags, mode)
-    const char *fname;
-    int flags, mode;
+rb_file_sysopen(const char *fname, int flags, int mode)
 {
     return rb_file_sysopen_internal(io_alloc(rb_cFile), fname, flags, mode);
 }
@@ -3034,8 +2898,7 @@ static struct pipe_list {
 } *pipe_list;
 
 static void
-pipe_add_fptr(fptr)
-    rb_io_t *fptr;
+pipe_add_fptr(rb_io_t *fptr)
 {
     struct pipe_list *list;
 
@@ -3046,8 +2909,7 @@ pipe_add_fptr(fptr)
 }
 
 static void
-pipe_del_fptr(fptr)
-    rb_io_t *fptr;
+pipe_del_fptr(rb_io_t *fptr)
 {
     struct pipe_list *list = pipe_list;
     struct pipe_list *tmp;
@@ -3085,9 +2947,7 @@ pipe_atexit _((void))
 static void pipe_finalize _((rb_io_t *fptr,int));
 
 static void
-pipe_finalize(fptr, noraise)
-    rb_io_t *fptr;
-    int noraise;
+pipe_finalize(rb_io_t *fptr, int noraise)
 {
 #if !defined (__CYGWIN__) && !defined(_WIN32)
     extern VALUE rb_last_status;
@@ -3111,15 +2971,13 @@ pipe_finalize(fptr, noraise)
 #endif
 
 void
-rb_io_synchronized(fptr)
-    rb_io_t *fptr;
+rb_io_synchronized(rb_io_t *fptr)
 {
     fptr->mode |= FMODE_SYNC;
 }
 
 void
-rb_io_unbuffered(fptr)
-    rb_io_t *fptr;
+rb_io_unbuffered(rb_io_t *fptr)
 {
     rb_io_synchronized(fptr);
 }
@@ -3127,9 +2985,7 @@ rb_io_unbuffered(fptr)
 static VALUE pipe_open(VALUE pstr, const char *pname, const char *mode);
 
 static VALUE
-pipe_open(pstr, pname, mode)
-    VALUE pstr;
-    const char *pname, *mode;
+pipe_open(VALUE pstr, const char *pname, const char *mode)
 {
     int modef = rb_io_mode_flags(mode);
     rb_io_t *fptr;
@@ -3346,10 +3202,7 @@ retry:
  */
 
 static VALUE
-rb_io_s_popen(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+rb_io_s_popen(int argc, VALUE *argv, VALUE klass)
 {
     const char *mode;
     VALUE pname, pmode, port;
@@ -3383,10 +3236,7 @@ rb_io_s_popen(argc, argv, klass)
 }
 
 static VALUE
-rb_open_file(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_open_file(int argc, VALUE *argv, VALUE io)
 {
     VALUE fname, vmode, perm;
     const char *path, *mode;
@@ -3429,10 +3279,7 @@ rb_open_file(argc, argv, io)
  */
 
 static VALUE
-rb_io_s_open(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+rb_io_s_open(int argc, VALUE *argv, VALUE klass)
 {
     VALUE io = rb_class_new_instance(argc, argv, klass);
 
@@ -3455,9 +3302,7 @@ rb_io_s_open(argc, argv, klass)
  */
 
 static VALUE
-rb_io_s_sysopen(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_io_s_sysopen(int argc, VALUE *argv)
 {
     VALUE fname, vmode, perm;
     int flags, fmode, fd;
@@ -3564,9 +3409,7 @@ rb_io_s_sysopen(argc, argv)
  */
 
 static VALUE
-rb_f_open(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_open(int argc, VALUE *argv)
 {
     if (argc >= 1) {
 	char *str = StringValuePtr(argv[0]);
@@ -3582,8 +3425,7 @@ rb_f_open(argc, argv)
 }
 
 static VALUE
-rb_io_open(fname, mode)
-    char *fname, *mode;
+rb_io_open(char *fname, char *mode)
 {
     if (fname[0] == '|') {
 	return pipe_open(0, fname+1, mode);
@@ -3594,22 +3436,19 @@ rb_io_open(fname, mode)
 }
 
 static VALUE
-rb_io_get_io(io)
-    VALUE io;
+rb_io_get_io(VALUE io)
 {
     return rb_convert_type(io, T_FILE, "IO", "to_io");
 }
 
 static VALUE
-rb_io_check_io(io)
-    VALUE io;
+rb_io_check_io(VALUE io)
 {
     return rb_check_convert_type(io, T_FILE, "IO", "to_io");
 }
 
 static const char*
-rb_io_mode_string(fptr)
-    rb_io_t *fptr;
+rb_io_mode_string(rb_io_t *fptr)
 {
     switch (fptr->mode & FMODE_READWRITE) {
       case FMODE_READABLE:
@@ -3623,8 +3462,7 @@ rb_io_mode_string(fptr)
 }
 
 static VALUE
-io_reopen(io, nfile)
-    VALUE io, nfile;
+io_reopen(VALUE io, VALUE nfile)
 {
     rb_io_t *fptr, *orig;
     const char *mode;
@@ -3737,10 +3575,7 @@ io_reopen(io, nfile)
  */
 
 static VALUE
-rb_io_reopen(argc, argv, file)
-    int argc;
-    VALUE *argv;
-    VALUE file;
+rb_io_reopen(int argc, VALUE *argv, VALUE file)
 {
     VALUE fname, nmode;
     const char *mode;
@@ -3801,8 +3636,7 @@ rb_io_reopen(argc, argv, file)
 
 /* :nodoc: */
 static VALUE
-rb_io_init_copy(dest, io)
-    VALUE dest, io;
+rb_io_init_copy(VALUE dest, VALUE io)
 {
     rb_io_t *fptr, *orig;
     int fd;
@@ -3869,10 +3703,7 @@ rb_io_init_copy(dest, io)
  */
 
 VALUE
-rb_io_printf(argc, argv, out)
-    int argc;
-    VALUE argv[];
-    VALUE out;
+rb_io_printf(int argc, VALUE argv[], VALUE out)
 {
     rb_io_write(out, rb_f_sprintf(argc, argv));
     return Qnil;
@@ -3890,9 +3721,7 @@ rb_io_printf(argc, argv, out)
  */
 
 static VALUE
-rb_f_printf(argc, argv)
-    int argc;
-    VALUE argv[];
+rb_f_printf(int argc, VALUE argv[])
 {
     VALUE out;
 
@@ -3931,10 +3760,7 @@ rb_f_printf(argc, argv)
  */
 
 VALUE
-rb_io_print(argc, argv, out)
-    int argc;
-    VALUE *argv;
-    VALUE out;
+rb_io_print(int argc, VALUE *argv, VALUE out)
 {
     int i;
     VALUE line;
@@ -3989,9 +3815,7 @@ rb_io_print(argc, argv, out)
  */
 
 static VALUE
-rb_f_print(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_print(int argc, VALUE *argv)
 {
     rb_io_print(argc, argv, rb_stdout);
     return Qnil;
@@ -4014,8 +3838,7 @@ rb_f_print(argc, argv)
  */
 
 static VALUE
-rb_io_putc(io, ch)
-    VALUE io, ch;
+rb_io_putc(VALUE io, VALUE ch)
 {
     char c = NUM2CHR(ch);
 
@@ -4033,15 +3856,13 @@ rb_io_putc(io, ch)
  */
 
 static VALUE
-rb_f_putc(recv, ch)
-    VALUE recv, ch;
+rb_f_putc(VALUE recv, VALUE ch)
 {
     return rb_io_putc(rb_stdout, ch);
 }
 
 static VALUE
-io_puts_ary(ary, out)
-    VALUE ary, out;
+io_puts_ary(VALUE ary, VALUE out)
 {
     VALUE tmp;
     long i;
@@ -4077,10 +3898,7 @@ io_puts_ary(ary, out)
  */
 
 VALUE
-rb_io_puts(argc, argv, out)
-    int argc;
-    VALUE *argv;
-    VALUE out;
+rb_io_puts(int argc, VALUE *argv, VALUE out)
 {
     int i;
     VALUE line;
@@ -4122,17 +3940,14 @@ rb_io_puts(argc, argv, out)
  */
 
 static VALUE
-rb_f_puts(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_puts(int argc, VALUE *argv)
 {
     rb_io_puts(argc, argv, rb_stdout);
     return Qnil;
 }
 
 void
-rb_p(obj)			/* for debug print within C code */
-    VALUE obj;
+rb_p(VALUE obj)
 {
     rb_io_write(rb_stdout, rb_obj_as_string(rb_inspect(obj)));
     rb_io_write(rb_stdout, rb_default_rs);
@@ -4156,9 +3971,7 @@ rb_p(obj)			/* for debug print within C code */
  */
 
 static VALUE
-rb_f_p(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_p(int argc, VALUE *argv)
 {
     int i;
 
@@ -4195,10 +4008,7 @@ rb_f_p(argc, argv)
  */
 
 static VALUE
-rb_obj_display(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
+rb_obj_display(int argc, VALUE *argv, VALUE self)
 {
     VALUE out;
 
@@ -4212,25 +4022,19 @@ rb_obj_display(argc, argv, self)
 }
 
 void
-rb_write_error2(mesg, len)
-    const char *mesg;
-    long len;
+rb_write_error2(const char *mesg, long len)
 {
     rb_io_write(rb_stderr, rb_str_new(mesg, len));
 }
 
 void
-rb_write_error(mesg)
-    const char *mesg;
+rb_write_error(const char *mesg)
 {
     rb_write_error2(mesg, strlen(mesg));
 }
 
 static void
-must_respond_to(mid, val, id)
-    ID mid;
-    VALUE val;
-    ID id;
+must_respond_to(ID mid, VALUE val, ID id)
 {
     if (!rb_respond_to(val, mid)) {
 	rb_raise(rb_eTypeError, "%s must have %s method, %s given",
@@ -4240,40 +4044,28 @@ must_respond_to(mid, val, id)
 }
 
 static void
-stdout_setter(val, id, variable)
-    VALUE val;
-    ID id;
-    VALUE *variable;
+stdout_setter(VALUE val, ID id, VALUE *variable)
 {
     must_respond_to(id_write, val, id);
     *variable = val;
 }
 
 static void
-defout_setter(val, id, variable)
-    VALUE val;
-    ID id;
-    VALUE *variable;
+defout_setter(VALUE val, ID id, VALUE *variable)
 {
     stdout_setter(val, id, variable);
     rb_warn("$defout is obsolete; use $stdout instead");
 }
 
 static void
-deferr_setter(val, id, variable)
-    VALUE val;
-    ID id;
-    VALUE *variable;
+deferr_setter(VALUE val, ID id, VALUE *variable)
 {
     stdout_setter(val, id, variable);
     rb_warn("$deferr is obsolete; use $stderr instead");
 }
 
 static VALUE
-prep_stdio(f, mode, klass)
-    FILE *f;
-    int mode;
-    VALUE klass;
+prep_stdio(FILE *f, int mode, VALUE klass)
 {
     rb_io_t *fp;
     VALUE io = io_alloc(klass);
@@ -4292,9 +4084,7 @@ prep_stdio(f, mode, klass)
 }
 
 static void
-prep_path(io, path)
-    VALUE io;
-    char *path;
+prep_path(VALUE io, char *path)
 {
     rb_io_t *fptr;
 
@@ -4322,10 +4112,7 @@ prep_path(io, path)
  */
 
 static VALUE
-rb_io_initialize(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_initialize(int argc, VALUE *argv, VALUE io)
 {
     VALUE fnum, mode;
     rb_io_t *fp;
@@ -4380,10 +4167,7 @@ rb_io_initialize(argc, argv, io)
  */
 
 static VALUE
-rb_file_initialize(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_file_initialize(int argc, VALUE *argv, VALUE io)
 {
     if (RFILE(io)->fptr) {
 	rb_raise(rb_eRuntimeError, "reinitializing File");
@@ -4420,10 +4204,7 @@ rb_file_initialize(argc, argv, io)
  */
 
 static VALUE
-rb_io_s_new(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+rb_io_s_new(int argc, VALUE *argv, VALUE klass)
 {
     if (rb_block_given_p()) {
 	const char *cname = rb_class2name(klass);
@@ -4443,10 +4224,7 @@ rb_io_s_new(argc, argv, klass)
  */
 
 static VALUE
-rb_io_s_for_fd(argc, argv, klass)
-    int argc;
-    VALUE *argv;
-    VALUE klass;
+rb_io_s_for_fd(int argc, VALUE *argv, VALUE klass)
 {
     VALUE io = rb_obj_alloc(klass);
     rb_io_initialize(argc, argv, io);
@@ -4471,8 +4249,7 @@ argf_forward(int argc, VALUE *argv)
 } while (0)
 
 static void
-argf_close(file)
-    VALUE file;
+argf_close(VALUE file)
 {
     if (TYPE(file) == T_FILE)
 	rb_io_close(file);
@@ -4601,9 +4378,7 @@ next_argv()
 }
 
 static VALUE
-argf_getline(argc, argv)
-    int argc;
-    VALUE *argv;
+argf_getline(int argc, VALUE *argv)
 {
     VALUE line;
 
@@ -4666,9 +4441,7 @@ argf_getline(argc, argv)
  */
 
 static VALUE
-rb_f_gets(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_gets(int argc, VALUE *argv)
 {
     VALUE line;
 
@@ -4718,9 +4491,7 @@ rb_gets()
  */
 
 static VALUE
-rb_f_readline(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_readline(int argc, VALUE *argv)
 {
     VALUE line;
 
@@ -4757,9 +4528,7 @@ rb_f_getc()
  */
 
 static VALUE
-rb_f_readlines(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_readlines(int argc, VALUE *argv)
 {
     VALUE line, ary;
 
@@ -4787,8 +4556,7 @@ rb_f_readlines(argc, argv)
  */
 
 static VALUE
-rb_f_backquote(obj, str)
-    VALUE obj, str;
+rb_f_backquote(VALUE obj, VALUE str)
 {
     volatile VALUE port;
     VALUE result;
@@ -4820,10 +4588,7 @@ rb_f_backquote(obj, str)
  */
 
 static VALUE
-rb_f_select(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+rb_f_select(int argc, VALUE *argv, VALUE obj)
 {
     VALUE read, write, except, timeout, res, list;
     fd_set rset, wset, eset, pset;
@@ -4958,9 +4723,7 @@ rb_f_select(argc, argv, obj)
 
 #if !defined(MSDOS) && !defined(__human68k__)
 static int
-io_cntl(fd, cmd, narg, io_p)
-    int fd, cmd, io_p;
-    long narg;
+io_cntl(int fd, int cmd, long narg, int io_p)
 {
     int retval;
 
@@ -4985,9 +4748,7 @@ io_cntl(fd, cmd, narg, io_p)
 #endif
 
 static VALUE
-rb_io_ctl(io, req, arg, io_p)
-    VALUE io, req, arg;
-    int io_p;
+rb_io_ctl(VALUE io, VALUE req, VALUE arg, int io_p)
 {
 #if !defined(MSDOS) && !defined(__human68k__)
     int cmd = NUM2ULONG(req);
@@ -5079,10 +4840,7 @@ rb_io_ctl(io, req, arg, io_p)
  */
 
 static VALUE
-rb_io_ioctl(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_ioctl(int argc, VALUE *argv, VALUE io)
 {
     VALUE req, arg;
 
@@ -5104,10 +4862,7 @@ rb_io_ioctl(argc, argv, io)
  */
 
 static VALUE
-rb_io_fcntl(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_fcntl(int argc, VALUE *argv, VALUE io)
 {
 #ifdef HAVE_FCNTL
     VALUE req, arg;
@@ -5140,9 +4895,7 @@ rb_io_fcntl(argc, argv, io)
  */
 
 static VALUE
-rb_f_syscall(argc, argv)
-    int argc;
-    VALUE *argv;
+rb_f_syscall(int argc, VALUE *argv)
 {
 #if defined(HAVE_SYSCALL) && !defined(__CHECKER__)
 #ifdef atarist
@@ -5244,8 +4997,7 @@ rb_f_syscall(argc, argv)
 
 static VALUE io_new_instance _((VALUE));
 static VALUE
-io_new_instance(args)
-    VALUE args;
+io_new_instance(VALUE args)
 {
     return rb_class_new_instance(2, (VALUE*)args+1, *(VALUE*)args);
 }
@@ -5287,8 +5039,7 @@ io_new_instance(args)
  */
 
 static VALUE
-rb_io_s_pipe(klass)
-    VALUE klass;
+rb_io_s_pipe(VALUE klass)
 {
 #ifndef __human68k__
     int pipes[2], state;
@@ -5334,8 +5085,7 @@ struct foreach_arg {
 };
 
 static VALUE
-io_s_foreach(arg)
-    struct foreach_arg *arg;
+io_s_foreach(struct foreach_arg *arg)
 {
     VALUE str;
 
@@ -5363,10 +5113,7 @@ io_s_foreach(arg)
  */     
 
 static VALUE
-rb_io_s_foreach(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
+rb_io_s_foreach(int argc, VALUE *argv, VALUE self)
 {
     VALUE fname;
     struct foreach_arg arg;
@@ -5388,8 +5135,7 @@ rb_io_s_foreach(argc, argv, self)
 }
 
 static VALUE
-io_s_readlines(arg)
-    struct foreach_arg *arg;
+io_s_readlines(struct foreach_arg *arg)
 {
     return rb_io_readlines(arg->argc, &arg->sep, arg->io);
 }
@@ -5408,10 +5154,7 @@ io_s_readlines(arg)
  */
 
 static VALUE
-rb_io_s_readlines(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_s_readlines(int argc, VALUE *argv, VALUE io)
 {
     VALUE fname;
     struct foreach_arg arg;
@@ -5426,8 +5169,7 @@ rb_io_s_readlines(argc, argv, io)
 }
 
 static VALUE
-io_s_read(arg)
-    struct foreach_arg *arg;
+io_s_read(struct foreach_arg *arg)
 {
     return io_read(arg->argc, &arg->sep, arg->io);
 }
@@ -5446,10 +5188,7 @@ io_s_read(arg)
  */
 
 static VALUE
-rb_io_s_read(argc, argv, io)
-    int argc;
-    VALUE *argv;
-    VALUE io;
+rb_io_s_read(int argc, VALUE *argv, VALUE io)
 {
     VALUE fname, offset;
     struct foreach_arg arg;
@@ -5477,10 +5216,7 @@ argf_tell()
 }
 
 static VALUE
-argf_seek_m(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
+argf_seek_m(int argc, VALUE *argv, VALUE self)
 {
     if (!next_argv()) {
 	rb_raise(rb_eArgError, "no stream to seek");
@@ -5490,8 +5226,7 @@ argf_seek_m(argc, argv, self)
 }
 
 static VALUE
-argf_set_pos(self, offset)
-     VALUE self, offset;
+argf_set_pos(VALUE self, VALUE offset)
 {
     if (!next_argv()) {
 	rb_raise(rb_eArgError, "no stream to set position");
@@ -5542,9 +5277,7 @@ argf_eof()
 }
 
 static VALUE
-argf_read(argc, argv)
-    int argc;
-    VALUE *argv;
+argf_read(int argc, VALUE *argv)
 {
     VALUE tmp, str, length;
     long len = 0;
@@ -5624,10 +5357,7 @@ argf_readchar()
 }
 
 static VALUE
-argf_each_line(argc, argv, argf)
-    int argc;
-    VALUE *argv;
-    VALUE argf;
+argf_each_line(int argc, VALUE *argv, VALUE argf)
 {
     VALUE str;
 
@@ -5647,8 +5377,7 @@ argf_each_line(argc, argv, argf)
 }
 
 static VALUE
-argf_each_byte(argf)
-    VALUE argf;
+argf_each_byte(VALUE argf)
 {
     VALUE byte;
 
@@ -5660,8 +5389,7 @@ argf_each_byte(argf)
 }
 
 static VALUE
-argf_each_char(argf)
-    VALUE argf;
+argf_each_char(VALUE argf)
 {
     VALUE ch;
 
@@ -5763,8 +5491,7 @@ opt_i_get()
 }
 
 static void
-opt_i_set(val)
-    VALUE val;
+opt_i_set(VALUE val)
 {
     if (!RTEST(val)) {
 	if (ruby_inplace_mode) free(ruby_inplace_mode);

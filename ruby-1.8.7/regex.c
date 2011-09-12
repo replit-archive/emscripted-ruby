@@ -65,9 +65,9 @@
 #include "defines.h"
 
 # define RUBY
-extern int rb_prohibit_interrupt;
-extern int rb_trap_pending;
-void rb_trap_exec _((void));
+extern "C" int rb_prohibit_interrupt;
+extern "C" int rb_trap_pending;
+extern "C" void rb_trap_exec _((void));
 
 # define CHECK_INTS do {\
     if (!rb_prohibit_interrupt) {\
@@ -188,8 +188,9 @@ static int current_mbctype = MBCTYPE_ASCII;
 
 #ifdef RUBY
 #include "util.h"
-void rb_warn _((const char*, ...));
-# define re_warning(x) rb_warn(x)
+#include "error.h"
+// void rb_warn _((const char*, ...));
+// # define re_warning(x) rb_warn(x)
 #endif
 
 #ifndef re_warning
@@ -219,8 +220,7 @@ init_syntax_once()
 }
 
 void
-re_set_casetable(table)
-     const char *table;
+re_set_casetable(const char *table)
 {
   translate = (const unsigned char*)table;
 }
@@ -423,8 +423,7 @@ enum regexpcode
    defined in regex.h.  */
 
 long
-re_set_syntax(syntax)
-  long syntax;
+re_set_syntax(long syntax)
 {
     /* obsolete */
     return 0;
@@ -492,8 +491,7 @@ static const mbc_startpos_func_t mbc_startpos_func[4] = {
 #define mbc_startpos(start, pos) (*mbc_startpos_func[current_mbctype])((start), (pos))
 
 static unsigned int
-utf8_firstbyte(c)
-     unsigned long c;
+utf8_firstbyte(unsigned long c)
 {
   if (c < 0x80) return c;
   if (c <= 0x7ff) return ((c>>6)&0xff)|0xc0;
@@ -509,8 +507,7 @@ utf8_firstbyte(c)
 }
 
 static void
-print_mbc(c)
-     unsigned int c;
+print_mbc(unsigned int c)
 {
   if (current_mbctype == MBCTYPE_UTF8) {
     if (c < 0x80)
@@ -661,9 +658,7 @@ print_mbc(c)
      }; */
 
 static void
-set_list_bits(c1, c2, b)
-    unsigned long c1, c2;
-    unsigned char *b;
+set_list_bits(unsigned long c1, unsigned long c2, unsigned char *b)
 {
   unsigned char sbc_size = b[-1];
   unsigned short mbc_size = EXTRACT_UNSIGNED(&b[sbc_size]);
@@ -707,9 +702,7 @@ set_list_bits(c1, c2, b)
 }
 
 static int
-is_in_list_sbc(c, b)
-    unsigned long c;
-    const unsigned char *b;
+is_in_list_sbc(unsigned long c, const unsigned char *b)
 {
   unsigned short size;
 
@@ -718,9 +711,7 @@ is_in_list_sbc(c, b)
 }
   
 static int
-is_in_list_mbc(c, b)
-    unsigned long c;
-    const unsigned char *b;
+is_in_list_mbc(unsigned long c, const unsigned char *b)
 {
   unsigned short size;
   unsigned short i, j;
@@ -745,17 +736,13 @@ is_in_list_mbc(c, b)
 }
 
 static int
-is_in_list(c, b)
-    unsigned long c;
-    const unsigned char *b;
+is_in_list(unsigned long c, const unsigned char *b)
 {
   return is_in_list_sbc(c, b) || (current_mbctype ? is_in_list_mbc(c, b) : 0);
 }
 
 static void
-print_partial_compiled_pattern(start, end)
-    unsigned char *start;
-    unsigned char *end;
+print_partial_compiled_pattern(unsigned char *start, unsigned char *end)
 {
   int mcnt, mcnt2;
   unsigned char *p = start;
@@ -999,8 +986,7 @@ print_partial_compiled_pattern(start, end)
 
 
 static void
-print_compiled_pattern(bufp)
-     struct re_pattern_buffer *bufp;
+print_compiled_pattern(struct re_pattern_buffer *bufp)
 {
   unsigned char *buffer = (unsigned char*)bufp->buffer;
 
@@ -1008,9 +994,7 @@ print_compiled_pattern(bufp)
 }
 
 static char*
-calculate_must_string(start, end)
-     char *start;
-     char *end;
+calculate_must_string(char *start, char *end)
 {
   int mcnt;
   int max = 0;
@@ -1120,8 +1104,7 @@ calculate_must_string(start, end)
 }
 
 static unsigned int
-read_backslash(c)
-     int c;
+read_backslash(int c)
 {
   switch (c) {
   case 'n':
@@ -1152,8 +1135,7 @@ read_backslash(c)
 }
 
 static unsigned int
-read_special(p, pend, pp)
-     const char *p, *pend, **pp;
+read_special(const char *p, const char *pend, const char **pp)
 {
   int c;
 
@@ -1209,10 +1191,7 @@ read_special(p, pend, pp)
    re_compile_pattern returns. */
 
 char *
-re_compile_pattern(pattern, size, bufp)
-     const char *pattern;
-     int size;
-     struct re_pattern_buffer *bufp;
+re_compile_pattern(const char *pattern, int size, struct re_pattern_buffer *bufp)
 {
   register char *b = bufp->buffer;
   register const char *p = pattern;
@@ -2486,8 +2465,7 @@ re_compile_pattern(pattern, size, bufp)
 }
 
 void
-re_free_pattern(bufp)
-     struct re_pattern_buffer *bufp;
+re_free_pattern(struct re_pattern_buffer *bufp)
 {
   xfree(bufp->buffer);
   xfree(bufp->fastmap);
@@ -2508,9 +2486,7 @@ re_free_pattern(bufp)
    address FROM - TO.  OPCODE is the opcode to store.  */
 
 static void
-store_jump(from, opcode, to)
-     char *from, *to;
-     int opcode;
+store_jump(char *from, int opcode, char *to)
 {
   from[0] = (char)opcode;
   STORE_NUMBER(from + 1, to - (from + 3));
@@ -2524,9 +2500,7 @@ store_jump(from, opcode, to)
    If you call this function, you must zero out pending_exact.  */
 
 static void
-insert_jump(op, from, to, current_end)
-     int op;
-     char *from, *to, *current_end;
+insert_jump(int op, char *from, char *to, char *current_end)
 {
   register char *pfrom = current_end;		/* Copy from here...  */
   register char *pto = current_end + 3;		/* ...to here.  */
@@ -2546,10 +2520,7 @@ insert_jump(op, from, to, current_end)
    If you call this function, you must zero out pending_exact.  */
 
 static void
-store_jump_n(from, opcode, to, n)
-     char *from, *to;
-     int opcode;
-     unsigned n;
+store_jump_n(char *from, int opcode, char *to, unsigned n)
 {
   from[0] = (char)opcode;
   STORE_NUMBER(from + 1, to - (from + 3));
@@ -2566,10 +2537,7 @@ store_jump_n(from, opcode, to, n)
    If you call this function, you must zero out pending_exact.  */
 
 static void
-insert_jump_n(op, from, to, current_end, n)
-     int op;
-     char *from, *to, *current_end;
-     unsigned n;
+insert_jump_n(int op, char *from, char *to, char *current_end, unsigned n)
 {
   register char *pfrom = current_end;		/* Copy from here...  */
   register char *pto = current_end + 5;		/* ...to here.  */
@@ -2587,9 +2555,7 @@ insert_jump_n(op, from, to, current_end, n)
    If you call this function, you must zero out pending_exact.  */
 
 static void
-insert_op(op, there, current_end)
-     int op;
-     char *there, *current_end;
+insert_op(int op, char *there, char *current_end)
 {
   register char *pfrom = current_end;		/* Copy from here...  */
   register char *pto = current_end + 1;		/* ...to here.  */
@@ -2608,10 +2574,7 @@ insert_op(op, there, current_end)
    If you call this function, you must zero out pending_exact.  */
 
 static void
-insert_op_2(op, there, current_end, num_1, num_2)
-     int op;
-     char *there, *current_end;
-     int num_1, num_2;
+insert_op_2(int op, char *there, char *current_end, int num_1, int num_2)
 {
   register char *pfrom = current_end;		/* Copy from here...  */
   register char *pto = current_end + 5;		/* ...to here.  */
@@ -2627,10 +2590,9 @@ insert_op_2(op, there, current_end, num_1, num_2)
 
 #define trans_eq(c1, c2, translate) (translate?(translate[c1]==translate[c2]):((c1)==(c2)))
 static int
-slow_match(little, lend, big, bend, translate)
-     const unsigned char *little, *lend;
-     const unsigned char *big, *bend;
-     const unsigned char *translate;
+slow_match(const unsigned char *little, const unsigned char *lend,
+           const unsigned char *big, const unsigned char *bend,
+           const unsigned char *translate)
 {
   int c;
 
@@ -2645,12 +2607,7 @@ slow_match(little, lend, big, bend, translate)
 }
 
 static int
-slow_search(little, llen, big, blen, translate)
-     const unsigned char *little;
-     int llen;
-     const unsigned char *big;
-     int blen;
-     const char *translate;
+slow_search(const unsigned char *little, int llen, const unsigned char *big, int blen, const char *translate)
 {
   const unsigned char *bsave = big;
   const unsigned char *bend = big + blen;
@@ -2698,11 +2655,7 @@ slow_search(little, llen, big, blen, translate)
 }
 
 static void
-bm_init_skip(skip, pat, m, translate)
-     int *skip;
-     unsigned char *pat;
-     int m;
-     const unsigned char *translate;
+bm_init_skip(int *skip, unsigned char *pat, int m, const unsigned char *translate)
 {
   int j, c;
 
@@ -2722,13 +2675,7 @@ bm_init_skip(skip, pat, m, translate)
 }
 
 static int
-bm_search(little, llen, big, blen, skip, translate)
-     const unsigned char *little;
-     int llen;
-     const unsigned char *big;
-     int blen;
-     int *skip;
-     const unsigned char *translate;
+bm_search(const unsigned char *little, int llen, const unsigned char *big, int blen, int *skip, const unsigned char *translate)
 {
   int i, j, k;
 
@@ -2770,8 +2717,7 @@ bm_search(little, llen, big, blen, skip, translate)
    area as bufp->fastmap.
    The other components of bufp describe the pattern to be used.  */
 void
-re_compile_fastmap(bufp)
-     struct re_pattern_buffer *bufp;
+re_compile_fastmap(struct re_pattern_buffer *bufp)
 {
   unsigned char *pattern = (unsigned char*)bufp->buffer;
   int size = bufp->used;
@@ -3109,9 +3055,7 @@ re_compile_fastmap(bufp)
 
 /* adjust startpos value to the position between characters. */
 int
-re_mbc_startpos(string, size, startpos, range)
-     const char *string;
-     int size, startpos, range;
+re_mbc_startpos(const char *string, int size, int startpos, int range)
 {
   int i = mbc_startpos(string, startpos);
 
@@ -3131,10 +3075,7 @@ re_mbc_startpos(string, size, startpos, range)
 }
 
 int
-re_adjust_startpos(bufp, string, size, startpos, range)
-     struct re_pattern_buffer *bufp;
-     const char *string;
-     int size, startpos, range;
+re_adjust_startpos(struct re_pattern_buffer *bufp, const char *string, int size, int startpos, int range)
 {
   /* Update the fastmap now if not correct already.  */
   if (!bufp->fastmap_accurate) {
@@ -3165,11 +3106,7 @@ static int re_match_exec _((struct re_pattern_buffer *, const char *, int, int, 
    failure stack overflow).  */
 
 int
-re_search(bufp, string, size, startpos, range, regs)
-     struct re_pattern_buffer *bufp;
-     const char *string;
-     int size, startpos, range;
-     struct re_registers *regs;
+re_search(struct re_pattern_buffer *bufp, const char *string, int size, int startpos, int range, struct re_registers *regs)
 {
   register char *fastmap = bufp->fastmap;
   int val, anchor = 0, initpos = startpos;
@@ -3493,9 +3430,7 @@ re_search(bufp, string, size, startpos, range, regs)
 			      IS_A_LETTER((d)-1)))
 
 static void
-init_regs(regs, num_regs)
-     struct re_registers *regs;
-     unsigned int num_regs;
+init_regs(struct re_registers *regs, unsigned int num_regs)
 {
   int i;
 
@@ -3534,21 +3469,13 @@ init_regs(regs, num_regs)
    length of the substring which was matched.  */
 
 int
-re_match(bufp, string_arg, size, pos, regs)
-     struct re_pattern_buffer *bufp;
-     const char *string_arg;
-     int size, pos;
-     struct re_registers *regs;
+re_match(struct re_pattern_buffer *bufp, const char *string_arg, int size, int pos, struct re_registers *regs)
 {
   return re_match_exec(bufp, string_arg, size, pos, pos, regs);
 }
 
 static int
-re_match_exec(bufp, string_arg, size, pos, beg, regs)
-     struct re_pattern_buffer *bufp;
-     const char *string_arg;
-     int size, pos, beg;
-     struct re_registers *regs;
+re_match_exec(struct re_pattern_buffer *bufp, const char *string_arg, int size, int pos, int beg, struct re_registers *regs)
 {
   register unsigned char *p = (unsigned char*)bufp->buffer;
   unsigned char *p1;
@@ -4398,9 +4325,7 @@ re_match_exec(bufp, string_arg, size, pos, beg, regs)
 
 
 static int
-memcmp_translate(s1, s2, len)
-     unsigned char *s1, *s2;
-     register int len;
+memcmp_translate(unsigned char *s1, unsigned char *s2, register int len)
 {
   register unsigned char *p1 = s1, *p2 = s2, c;
   while (len) {
@@ -4422,8 +4347,7 @@ memcmp_translate(s1, s2, len)
 }
 
 void
-re_copy_registers(regs1, regs2)
-     struct re_registers *regs1, *regs2;
+re_copy_registers(struct re_registers *regs1, struct re_registers *regs2)
 {
   int i;
 
@@ -4446,8 +4370,7 @@ re_copy_registers(regs1, regs2)
 }
 
 void
-re_free_registers(regs)
-     struct re_registers *regs;
+re_free_registers(struct re_registers *regs)
 {
   if (regs->allocated == 0) return;
   if (regs->beg) xfree(regs->beg);
@@ -4555,8 +4478,7 @@ static const unsigned char mbctab_utf8[] = {
 const unsigned char *re_mbctab = mbctab_ascii;
 
 void
-re_mbcinit(mbctype)
-     int mbctype;
+re_mbcinit(int mbctype)
 {
   switch (mbctype) {
   case MBCTYPE_ASCII:
@@ -4582,9 +4504,7 @@ re_mbcinit(mbctype)
 #define mbc_len(t, c)     ((t)[(unsigned char)(c)]+1)
 
 static unsigned int
-asc_startpos(string, pos)
-     const char *string;
-     unsigned int pos;
+asc_startpos(const char *string, unsigned int pos)
 {
   return pos;
 }
@@ -4592,9 +4512,7 @@ asc_startpos(string, pos)
 #define euc_islead(c)  ((unsigned char)((c) - 0xa1) > 0xfe - 0xa1)
 #define euc_mbclen(c)  mbc_len(mbctab_euc, (c))
 static unsigned int
-euc_startpos(string, pos)
-     const char *string;
-     unsigned int pos;
+euc_startpos(const char *string, unsigned int pos)
 {
   unsigned int i = pos, w;
 
@@ -4612,9 +4530,7 @@ euc_startpos(string, pos)
 #define sjis_istrail(c) mbctab_sjis_trail[(unsigned char)(c)]
 #define sjis_mbclen(c)  mbc_len(mbctab_sjis, (c))
 static unsigned int
-sjis_startpos(string, pos)
-     const char *string;
-     unsigned int pos;
+sjis_startpos(const char *string, unsigned int pos)
 {
   unsigned int i = pos, w;
 
@@ -4636,9 +4552,7 @@ sjis_startpos(string, pos)
 #define utf8_islead(c)  ((unsigned char)((c) & 0xc0) != 0x80)
 #define utf8_mbclen(c)  mbc_len(mbctab_utf8, (c))
 static unsigned int
-utf8_startpos(string, pos)
-     const char *string;
-     unsigned int pos;
+utf8_startpos(const char *string, unsigned int pos)
 {
   unsigned int i = pos, w;
 
