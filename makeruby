@@ -1,0 +1,51 @@
+#!/bin/bash
+
+EMSCRIPTEN_ROOT=/home/max/emscripten-workspace/emscripten
+EMMAKEN=$EMSCRIPTEN_ROOT/tools/emmakenxx.py
+LLVM_DIS=/home/max/emscripten-workspace/llvm-build/Release/bin/llvm-dis
+CLOSURE_JAR=/home/max/emscripten-workspace/closure/build/compiler.jar
+FLAGS=" -fno-operator-names -fpermissive"
+RUBY_LIB_PATH=lib
+RUN_CLOSURE=0
+
+set -e
+
+cd ruby-1.8.7
+
+# echo 'Compiling to LLVM...'
+# CFLAGS=$FLAGS RANLIB=$EMMAKEN AR=$EMMAKEN CXX=$EMMAKEN CC=$EMMAKEN ./configure --without-pthread
+# patch config.h < ../config.h.patch
+# make miniruby
+# $LLVM_DIS --show-annotations libruby-static.a
+# 
+# echo 'Running Emscripten...'
+# $EMSCRIPTEN_ROOT/emscripten.py \
+#   libruby-static.a.ll \
+#   -m \
+#   -O \
+#   -o ruby.js \
+#   -s EXCEPTION_DEBUG=0 \
+#   -s CORRECT_SIGNS=1 \
+#   -s CORRECT_OVERFLOWS=1 \
+#   -s INVOKE_RUN=0 \
+#   -s SAFE_HEAP=0 \
+#   -s ASSERTIONS=0 \
+#   -s OPTIMIZE=1
+# 
+# echo 'Touching up...'
+# mkdir -p ../dist
+# cp ruby.js ../dist
+# cp -r lib ../dist
+# ../map_filesystem.py lib/ >> ../dist/ruby.js
+# sed -i "s~\", \"./~\", \"./$RUBY_LIB_PATH/~" ../dist/ruby.js
+cat ../entry_point.js >> ../dist/ruby.js
+
+echo 'Running eliminator...'
+coffee /home/max/emscripten-workspace/emscripten/tools/eliminator/eliminator.coffee < ../dist/ruby.js > ../dist/ruby.opt.js
+
+if [ $RUN_CLOSURE -eq 1 ]; then
+  echo 'Running closure compiler...'
+  java -Xmx4g -jar /home/max/emscripten-workspace/closure/build/compiler.jar --compilation_level SIMPLE_OPTIMIZATIONS --js ../dist/ruby.opt.js --js_output_file ../dist/ruby.closure.js
+fi;
+
+echo 'Done.'
