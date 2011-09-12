@@ -13,6 +13,30 @@
 **********************************************************************/
 
 extern "C" {
+#include <setjmp.h>
+
+class EmscriptenJump {
+public:
+  __jmp_buf_tag* env;
+  int ret;
+  EmscriptenJump() {};
+};
+static EmscriptenJump EmscriptenJumpInstance;
+
+static int emscripten_curr_env = 1;
+int emscripten_setjmp(jmp_buf env) {
+  *((int*)env) = emscripten_curr_env++;
+  return 0;
+}
+void emscripten_longjmp(jmp_buf env, int ret) {
+  EmscriptenJumpInstance.env = env;
+  EmscriptenJumpInstance.ret = ret;
+  throw EmscriptenJumpInstance;
+}
+bool emscripten_matchjmp(jmp_buf env, jmp_buf env2) {
+  return *((int*)env) == *((int*)env2);
+}
+
 #include "ruby.h"
 #include "node.h"
 #include "env.h"
@@ -192,8 +216,7 @@ static int volatile freebsd_clear_carry_flag = 0;
      POST_GETCONTEXT, \
      (j)->status)
 #else
-#  define ruby_setjmp(just_before_setjmp, env) \
-     ((just_before_setjmp), RUBY_SETJMP(env))
+#  define ruby_setjmp(env) RUBY_SETJMP(env)
 #  define ruby_longjmp(env,val) RUBY_LONGJMP(env,val)
 #  ifdef __CYGWIN__
 int _setjmp(), _longjmp();
@@ -991,7 +1014,7 @@ static struct tag *prot_tag;
 #define PROT_LAMBDA INT2FIX(2)      /* 5 */
 #define PROT_YIELD  INT2FIX(3)      /* 7 */
 
-#define EXEC_TAG()    ruby_setjmp(((void)(0)), prot_tag->buf)
+#define EXEC_TAG()    ruby_setjmp(prot_tag->buf)
 
 #define JUMP_TAG(st) do {            \
     ruby_frame = prot_tag->frame;      \
@@ -1195,48 +1218,67 @@ error_print()
     if (NIL_P(ruby_errinfo)) return;
 
     PUSH_TAG(PROT_NONE);
-    if (EXEC_TAG() == 0) {
-        errat = get_backtrace(ruby_errinfo);
-    }
-    else {
+    emscripten_setjmp(prot_tag->buf);
+    try {
+      errat = get_backtrace(ruby_errinfo);
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
         errat = Qnil;
+      } else {
+        throw;
+      }
     }
-    if (EXEC_TAG()) goto error;
-    if (NIL_P(errat)){
+    
+    emscripten_setjmp(prot_tag->buf);
+    try {
+      if (NIL_P(errat)){
         ruby_set_current_source();
         if (ruby_sourcefile)
             warn_printf("%s:%d", ruby_sourcefile, ruby_sourceline);
         else
             warn_printf("%d", ruby_sourceline);
-    }
-    else if (RARRAY(errat)->len == 0) {
+      }
+      else if (RARRAY(errat)->len == 0) {
         error_pos();
-    }
-    else {
+      }
+      else {
         VALUE mesg = RARRAY(errat)->ptr[0];
 
         if (NIL_P(mesg)) error_pos();
         else {
             warn_print2(RSTRING(mesg)->ptr, RSTRING(mesg)->len);
         }
+      }
+      eclass = CLASS_OF(ruby_errinfo);
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        goto error;
+      } else {
+        throw;
+      }
     }
 
-    eclass = CLASS_OF(ruby_errinfo);
-    if (EXEC_TAG() == 0) {
-          e = rb_funcall(ruby_errinfo, rb_intern("message"), 0, 0);
-         StringValue(e);
-        einfo = RSTRING(e)->ptr;
-        elen = RSTRING(e)->len;
-    }
-    else {
+    emscripten_setjmp(prot_tag->buf);
+    try {
+        e = rb_funcall(ruby_errinfo, rb_intern("message"), 0, 0);
+       StringValue(e);
+      einfo = RSTRING(e)->ptr;
+      elen = RSTRING(e)->len;
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
         einfo = "";
         elen = 0;
+      } else {
+        throw;
+      }
     }
-    if (EXEC_TAG()) goto error;
-    if (eclass == rb_eRuntimeError && elen == 0) {
+    
+    emscripten_setjmp(prot_tag->buf);
+    try {
+      if (eclass == rb_eRuntimeError && elen == 0) {
         warn_print(": unhandled exception\n");
-    }
-    else {
+      }
+      else {
         VALUE epath;
 
         epath = rb_class_name(eclass);
@@ -1250,44 +1292,51 @@ error_print()
             long len = elen;
 
             if (RSTRING(epath)->ptr[0] == '#') epath = 0;
-            if ((tail = memchr(einfo, '\n', elen)) != 0) {
-                len = tail - einfo;
-                tail++;                /* skip newline */
+            if ((tail = (char *)memchr(einfo, '\n', elen)) != 0) {
+              len = tail - einfo;
+              tail++;            /* skip newline */
             }
             warn_print(": ");
             warn_print2(einfo, len);
             if (epath) {
-                warn_print(" (");
-                warn_print2(RSTRING(epath)->ptr, RSTRING(epath)->len);
-                warn_print(")\n");
+              warn_print(" (");
+              warn_print2(RSTRING(epath)->ptr, RSTRING(epath)->len);
+              warn_print(")\n");
             }
             if (tail && elen>len+1) {
-                warn_print2(tail, elen-len-1);
-                if (einfo[elen-1] != '\n') warn_print2("\n", 1);
+              warn_print2(tail, elen-len-1);
+              if (einfo[elen-1] != '\n') warn_print2("\n", 1);
             }
         }
-    }
+      }
 
-    if (!NIL_P(errat)) {
+      if (!NIL_P(errat)) {
         long i;
         struct RArray *ep = RARRAY(errat);
-        int truncate = eclass == rb_eSysStackError;
+          int truncate = eclass == rb_eSysStackError;
 
-#define TRACE_MAX (TRACE_HEAD+TRACE_TAIL+5)
-#define TRACE_HEAD 8
-#define TRACE_TAIL 5
+  #define TRACE_MAX (TRACE_HEAD+TRACE_TAIL+5)
+  #define TRACE_HEAD 8
+  #define TRACE_TAIL 5
 
         ep = RARRAY(errat);
         for (i=1; i<ep->len; i++) {
             if (TYPE(ep->ptr[i]) == T_STRING) {
-                warn_printf("\tfrom %s\n", RSTRING(ep->ptr[i])->ptr);
+              warn_printf("\tfrom %s\n", RSTRING(ep->ptr[i])->ptr);
             }
             if (truncate && i == TRACE_HEAD && ep->len > TRACE_MAX) {
-                warn_printf("\t ... %ld levels...\n",
-                        ep->len - TRACE_HEAD - TRACE_TAIL);
-                i = ep->len - TRACE_TAIL;
+              warn_printf("\t ... %ld levels...\n",
+                    ep->len - TRACE_HEAD - TRACE_TAIL);
+              i = ep->len - TRACE_TAIL;
             }
         }
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        goto error;
+      } else {
+        throw;
+      }
     }
   error:
     POP_TAG();
@@ -1350,20 +1399,28 @@ ruby_init()
     SCOPE_SET(SCOPE_PRIVATE);
 
     PUSH_TAG(PROT_NONE);
-    if ((state = EXEC_TAG()) == 0) {
-        rb_call_inits();
-        ruby_class = rb_cObject;
-        ruby_frame->self = ruby_top_self;
-        ruby_top_cref = rb_node_newnode(NODE_CREF,rb_cObject,0,0);
-        ruby_cref = ruby_top_cref;
-        rb_define_global_const("TOPLEVEL_BINDING", rb_f_binding(ruby_top_self));
+    emscripten_setjmp(prot_tag->buf);
+    state = 0;
+    try {
+      rb_call_inits();
+      ruby_class = rb_cObject;
+      ruby_frame->self = ruby_top_self;
+      ruby_top_cref = rb_node_newnode(NODE_CREF,rb_cObject,0,0);
+      ruby_cref = ruby_top_cref;
+      rb_define_global_const("TOPLEVEL_BINDING", rb_f_binding(ruby_top_self));
 #ifdef __MACOS__
       _macruby_init();
 #elif defined(__VMS)
       _vmsruby_init();
 #endif
-        ruby_prog_init();
-        ALLOW_INTS;
+      ruby_prog_init();
+      ALLOW_INTS;
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     if (state) {
@@ -1479,14 +1536,27 @@ ruby_options(int argc, char **argv)
 
     Init_stack((VALUE*)&state);
     PUSH_TAG(PROT_NONE);
-    if ((state = EXEC_TAG()) == 0) {
+
+    emscripten_setjmp(prot_tag->buf);
+    bool first_try = true;
+    try_again:
+    try {
+      if (first_try) {
         ruby_process_options(argc, argv);
-    }
-    else {
+      } else {
         trace_func = 0;
         tracing = 0;
         exit(error_handle(state));
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        first_try = false;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
+
     POP_TAG();
 }
 
@@ -1496,8 +1566,15 @@ static void
 ruby_finalize_0()
 {
     PUSH_TAG(PROT_NONE);
-    if (EXEC_TAG() == 0) {
-        rb_trap_exit();
+    emscripten_setjmp(prot_tag->buf);
+    try {
+      rb_trap_exit();
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        // Nothing.
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     rb_exec_end_proc();
@@ -1534,17 +1611,41 @@ ruby_cleanup(int ex)
     errs[0] = ruby_errinfo;
     PUSH_TAG(PROT_NONE);
     PUSH_ITER(ITER_NOT);
-    if ((state = EXEC_TAG()) == 0) {
+    
+    state = emscripten_setjmp(prot_tag->buf);
+    bool first_try = true;
+    try_again:
+    try {
+      if (first_try) {
         rb_thread_cleanup();
         rb_thread_wait_other_threads();
+        ruby_iter = _iter.prev; // FROM POP_ITER
+        ruby_errinfo = errs[1];
+        ex = error_handle(ex);
+        ruby_finalize_1();
+      } else {
+        if (ex == 0) {
+          ex = state;
+        }
+        ruby_iter = _iter.prev; // FROM POP_ITER
+        ruby_errinfo = errs[1];
+        ex = error_handle(ex);
+        ruby_finalize_1();
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        first_try = false;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
-    else if (ex == 0) {
-        ex = state;
-    }
-    POP_ITER();
-    ruby_errinfo = errs[1];
-    ex = error_handle(ex);
-    ruby_finalize_1();
+
+    
+    
+    
+    } while (0); // FROM POP_ITER
     POP_TAG();
 
     for (nerr = 0; nerr < sizeof(errs) / sizeof(errs[0]); ++nerr) {
@@ -1587,9 +1688,18 @@ ruby_exec_internal()
     PUSH_ITER(ITER_NOT);
     /* default visibility is private at toplevel */
     SCOPE_SET(SCOPE_PRIVATE);
-    if ((state = EXEC_TAG()) == 0) {
-        eval_node(ruby_top_self, ruby_eval_tree);
+    
+    state = emscripten_setjmp(prot_tag->buf);
+    try {
+      eval_node(ruby_top_self, ruby_eval_tree);
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+      } else {
+        throw;
+      }
     }
+    
     POP_ITER();
     POP_TAG();
     return state;
@@ -1788,17 +1898,24 @@ rb_eval_cmd(VALUE cmd, VALUE arg, int level)
       level = 4;
     }
     if (TYPE(cmd) != T_STRING) {
-        PUSH_ITER(ITER_NOT);
-        PUSH_TAG(PROT_NONE);
-        ruby_safe_level = level;
-        if ((state = EXEC_TAG()) == 0) {
-            val = rb_funcall2(cmd, rb_intern("call"), RARRAY(arg)->len, RARRAY(arg)->ptr);
+      PUSH_ITER(ITER_NOT);
+      PUSH_TAG(PROT_NONE);
+      ruby_safe_level = level;
+      state = emscripten_setjmp(prot_tag->buf);
+      try {
+        val = rb_funcall2(cmd, rb_intern("call"), RARRAY(arg)->len, RARRAY(arg)->ptr);
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+        } else {
+          throw;
         }
-        ruby_safe_level = safe;
-        POP_TAG();
-        POP_ITER();
-        if (state) JUMP_TAG(state);
-        return val;
+      }
+      ruby_safe_level = safe;
+      POP_TAG();
+      POP_ITER();
+      if (state) JUMP_TAG(state);
+      return val;
     }
 
     saved_scope = ruby_scope;
@@ -1812,13 +1929,26 @@ rb_eval_cmd(VALUE cmd, VALUE arg, int level)
     ruby_safe_level = level;
 
     PUSH_TAG(PROT_NONE);
-    if ((state = EXEC_TAG()) == 0) {
+    
+    state = emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      if (state == 0) {
         val = eval(ruby_top_self, cmd, Qnil, 0, 0);
-    }
-    if (ruby_scope->flags & SCOPE_DONT_RECYCLE)
+      }
+      if (ruby_scope->flags & SCOPE_DONT_RECYCLE)
         scope_dup(saved_scope);
-    ruby_scope = saved_scope;
-    ruby_safe_level = safe;
+      ruby_scope = saved_scope;
+      ruby_safe_level = safe;
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
+    }
+    
     POP_TAG();
     POP_FRAME();
 
@@ -2294,15 +2424,22 @@ is_defined(VALUE self, NODE *node, char *buf)
       val = self;
       if (node->nd_recv == (NODE *)1) goto check_bound;
       case NODE_CALL:
-        PUSH_TAG(PROT_NONE);
-        if ((state = EXEC_TAG()) == 0) {
-            val = rb_eval(self, node->nd_recv);
+      PUSH_TAG(PROT_NONE);
+      state = emscripten_setjmp(prot_tag->buf);
+      try {
+        val = rb_eval(self, node->nd_recv);
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+        } else {
+          throw;
         }
-        POP_TAG();
-        if (state) {
-            ruby_errinfo = Qnil;
-            return 0;
-        }
+      }
+      POP_TAG();
+      if (state) {
+          ruby_errinfo = Qnil;
+          return 0;
+      }
       check_bound:
       {
           int call = nd_type(node)==NODE_CALL;
@@ -2396,29 +2533,36 @@ is_defined(VALUE self, NODE *node, char *buf)
       break;
 
       case NODE_COLON2:
-        PUSH_TAG(PROT_NONE);
-        if ((state = EXEC_TAG()) == 0) {
-            val = rb_eval(self, node->nd_head);
+      PUSH_TAG(PROT_NONE);
+      state = emscripten_setjmp(prot_tag->buf);
+      try {
+        val = rb_eval(self, node->nd_head);
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+        } else {
+          throw;
         }
-        POP_TAG();
-        if (state) {
-            ruby_errinfo = Qnil;
-            return 0;
-        }
-        else {
-            switch (TYPE(val)) {
-              case T_CLASS:
-              case T_MODULE:
-                if (rb_const_defined_from(val, node->nd_mid))
-                    return "constant";
-                break;
-              default:
-                if (rb_method_boundp(CLASS_OF(val), node->nd_mid, 1)) {
-                    return "method";
-                }
+      }
+      POP_TAG();
+      if (state) {
+          ruby_errinfo = Qnil;
+          return 0;
+      }
+      else {
+          switch (TYPE(val)) {
+            case T_CLASS:
+            case T_MODULE:
+            if (rb_const_defined_from(val, node->nd_mid))
+                return "constant";
+            break;
+            default:
+            if (rb_method_boundp(CLASS_OF(val), node->nd_mid, 1)) {
+                return "method";
             }
-        }
-        break;
+          }
+      }
+      break;
 
       case NODE_COLON3:
       if (rb_const_defined_from(rb_cObject, node->nd_mid)) {
@@ -2445,16 +2589,23 @@ is_defined(VALUE self, NODE *node, char *buf)
       goto again;
 
       default:
-        PUSH_TAG(PROT_NONE);
-        if ((state = EXEC_TAG()) == 0) {
-            rb_eval(self, node);
+      PUSH_TAG(PROT_NONE);
+      state = emscripten_setjmp(prot_tag->buf);
+      try {
+        rb_eval(self, node);
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+        } else {
+          throw;
         }
-        POP_TAG();
-        if (!state) {
-            return "expression";
-        }
-        ruby_errinfo = Qnil;
-        break;
+      }
+      POP_TAG();
+      if (!state) {
+          return "expression";
+      }
+      ruby_errinfo = Qnil;
+      break;
     }
     return 0;
 }
@@ -2640,18 +2791,29 @@ call_trace_func(rb_event_t event, NODE *node, VALUE self, ID id, VALUE klass)
     }
     PUSH_TAG(PROT_NONE);
     raised = thread_reset_raised();
-    if ((state = EXEC_TAG()) == 0) {
+    state = emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      if (state == 0) {
         srcfile = rb_str_new2(ruby_sourcefile?ruby_sourcefile:"(ruby)");
         event_name = get_event_name(event);
         proc_invoke(trace_func, rb_ary_new3(6, rb_str_new2(event_name),
-                                            srcfile,
-                                            INT2FIX(ruby_sourceline),
-                                            id?ID2SYM(id):Qnil,
-                                            self?rb_f_binding(self):Qnil,
-                                            klass),
-                    Qundef, 0);
+                                    srcfile,
+                                    INT2FIX(ruby_sourceline),
+                                    id?ID2SYM(id):Qnil,
+                                    self?rb_f_binding(self):Qnil,
+                                    klass),
+                  Qundef, 0);
+      }
+      if (raised) thread_set_raised();
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
-    if (raised) thread_set_raised();
     POP_TAG();
     POP_FRAME();
 
@@ -2893,8 +3055,11 @@ rb_eval(VALUE self, NODE *n)
 
       /* node for speed-up(top-level loop for -n/-p) */
       case NODE_OPT_N:
-        PUSH_TAG(PROT_LOOP);
-        switch (state = EXEC_TAG()) {
+      PUSH_TAG(PROT_LOOP);
+      state = emscripten_setjmp(prot_tag->buf);
+      try_again:
+      try {
+        switch (state) {
           case 0:
           opt_n_next:
             while (!NIL_P(rb_gets())) {
@@ -2914,9 +3079,17 @@ rb_eval(VALUE self, NODE *n)
           default:
             break;
         }
-        POP_TAG();
-        if (state) JUMP_TAG(state);
-        RETURN(Qnil);
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+          goto try_again;
+        } else {
+          throw;
+        }
+      }
+      POP_TAG();
+      if (state) JUMP_TAG(state);
+      RETURN(Qnil);
 
       case NODE_SELF:
       RETURN(self);
@@ -3022,9 +3195,12 @@ rb_eval(VALUE self, NODE *n)
       RETURN(Qnil);
 
       case NODE_WHILE:
-        PUSH_TAG(PROT_LOOP);
-        result = Qnil;
-        switch (state = EXEC_TAG()) {
+      PUSH_TAG(PROT_LOOP);
+      result = Qnil;
+      state = emscripten_setjmp(prot_tag->buf);
+      try_again2:
+      try {
+        switch (state) {
           case 0:
             if (node->nd_state && !RTEST(rb_eval(self, node->nd_cond)))
                 goto while_out;
@@ -3052,14 +3228,26 @@ rb_eval(VALUE self, NODE *n)
             break;
         }
       while_out:
-        POP_TAG();
-        if (state) JUMP_TAG(state);
-        RETURN(result);
+        ;
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+          goto try_again2;
+        } else {
+          throw;
+        }
+      }
+      POP_TAG();
+      if (state) JUMP_TAG(state);
+      RETURN(result);
 
       case NODE_UNTIL:
-        PUSH_TAG(PROT_LOOP);
-        result = Qnil;
-        switch (state = EXEC_TAG()) {
+      PUSH_TAG(PROT_LOOP);
+      result = Qnil;
+      state = emscripten_setjmp(prot_tag->buf);
+      try_again3:
+      try {
+        switch (state) {
           case 0:
             if (node->nd_state && RTEST(rb_eval(self, node->nd_cond)))
                 goto until_out;
@@ -3087,9 +3275,18 @@ rb_eval(VALUE self, NODE *n)
             break;
         }
       until_out:
-        POP_TAG();
-        if (state) JUMP_TAG(state);
-        RETURN(result);
+        ;
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+          goto try_again3;
+        } else {
+          throw;
+        }
+      }
+      POP_TAG();
+      if (state) JUMP_TAG(state);
+      RETURN(result);
 
       case NODE_BLOCK_PASS:
       result = block_pass(self, node);
@@ -3097,11 +3294,13 @@ rb_eval(VALUE self, NODE *n)
 
       case NODE_ITER:
       case NODE_FOR:
-        {
-            PUSH_TAG(PROT_LOOP);
-            PUSH_BLOCK(node->nd_var, node->nd_body);
+      {
+          PUSH_TAG(PROT_LOOP);
+          PUSH_BLOCK(node->nd_var, node->nd_body);
 
-            state = EXEC_TAG();
+          state = emscripten_setjmp(prot_tag->buf);
+          try_again4:
+          try {
             if (state == 0) {
               iter_retry:
                 PUSH_ITER(ITER_PRE);
@@ -3129,16 +3328,24 @@ rb_eval(VALUE self, NODE *n)
                 state = 0;
                 goto iter_retry;
             }
-            POP_BLOCK();
-            POP_TAG();
-            switch (state) {
-              case 0:
-                break;
-              default:
-                JUMP_TAG(state);
+          } catch (EmscriptenJump e) {
+            if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+              state = e.ret;
+              goto try_again4;
+            } else {
+              throw;
             }
-        }
-        break;
+          }
+          POP_BLOCK();
+          POP_TAG();
+          switch (state) {
+            case 0:
+            break;
+            default:
+            JUMP_TAG(state);
+          }
+      }
+      break;
 
       case NODE_BREAK:
       break_jump(rb_eval(self, node->nd_stts));
@@ -3185,12 +3392,15 @@ rb_eval(VALUE self, NODE *n)
       break;
 
       case NODE_RESCUE:
-        {
-            volatile VALUE e_info = ruby_errinfo;
-            volatile int rescuing = 0;
+      {
+          volatile VALUE e_info = ruby_errinfo;
+          volatile int rescuing = 0;
 
-            PUSH_TAG(PROT_NONE);
-            if ((state = EXEC_TAG()) == 0) {
+          PUSH_TAG(PROT_NONE);
+          state = emscripten_setjmp(prot_tag->buf);
+          try_again5:
+          try {
+            if (state == 0) {
               retry_entry:
                 result = rb_eval(self, node->nd_head);
             }
@@ -3225,34 +3435,50 @@ rb_eval(VALUE self, NODE *n)
             else {
                 result = prot_tag->retval;
             }
-            POP_TAG();
-            if (state != TAG_RAISE) ruby_errinfo = e_info;
-            if (state) {
-                JUMP_TAG(state);
+          } catch (EmscriptenJump e) {
+            if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+              state = e.ret;
+              goto try_again5;
+            } else {
+              throw;
             }
-            /* no exception raised */
-            if (!rescuing && (node = node->nd_else)) { /* else clause given */
-                goto again;
-            }
-        }
-        break;
+          }
+          POP_TAG();
+          if (state != TAG_RAISE) ruby_errinfo = e_info;
+          if (state) {
+            JUMP_TAG(state);
+          }
+          /* no exception raised */
+          if (!rescuing && (node = node->nd_else)) { /* else clause given */
+            goto again;
+          }
+      }
+      break;
 
       case NODE_ENSURE:
-        PUSH_TAG(PROT_NONE);
-        if ((state = EXEC_TAG()) == 0) {
-            result = rb_eval(self, node->nd_head);
+      PUSH_TAG(PROT_NONE);
+      state = emscripten_setjmp(prot_tag->buf);
+      try {
+        result = rb_eval(self, node->nd_head);
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+          // catch block
+        } else {
+          throw;
         }
-        POP_TAG();
-        if (node->nd_ensr && !thread_no_ensure()) {
-            VALUE retval = prot_tag->retval; /* save retval */
-            VALUE errinfo = ruby_errinfo;
+      }
+      POP_TAG();
+      if (node->nd_ensr && !thread_no_ensure()) {
+          VALUE retval = prot_tag->retval; /* save retval */
+          VALUE errinfo = ruby_errinfo;
 
-            rb_eval(self, node->nd_ensr);
-            return_value(retval);
-            ruby_errinfo = errinfo;
-        }
-        if (state) JUMP_TAG(state);
-        break;
+          rb_eval(self, node->nd_ensr);
+          return_value(retval);
+          ruby_errinfo = errinfo;
+      }
+      if (state) JUMP_TAG(state);
+      break;
 
       case NODE_AND:
       result = rb_eval(self, node->nd_1st);
@@ -3447,42 +3673,50 @@ rb_eval(VALUE self, NODE *n)
       break;
 
       case NODE_SCOPE:
-        {
-            struct FRAME frame;
-            NODE *saved_cref = 0;
+      {
+          struct FRAME frame;
+          NODE *saved_cref = 0;
 
-            frame = *ruby_frame;
-            frame.tmp = ruby_frame;
-            ruby_frame = &frame;
+          frame = *ruby_frame;
+          frame.tmp = ruby_frame;
+          ruby_frame = &frame;
 
-            PUSH_SCOPE();
-            PUSH_TAG(PROT_NONE);
-            if (node->nd_rval) {
-                saved_cref = ruby_cref;
-                ruby_cref = (NODE*)node->nd_rval;
+          PUSH_SCOPE();
+          PUSH_TAG(PROT_NONE);
+          if (node->nd_rval) {
+            saved_cref = ruby_cref;
+            ruby_cref = (NODE*)node->nd_rval;
+          }
+          if (node->nd_tbl) {
+            VALUE *vars = ALLOCA_N(VALUE, node->nd_tbl[0]+1);
+            *vars++ = (VALUE)node;
+            ruby_scope->local_vars = vars;
+            rb_mem_clear(ruby_scope->local_vars, node->nd_tbl[0]);
+            ruby_scope->local_tbl = node->nd_tbl;
+          }
+          else {
+            ruby_scope->local_vars = 0;
+            ruby_scope->local_tbl  = 0;
+          }
+          state = emscripten_setjmp(prot_tag->buf);
+          try {
+            result = rb_eval(self, node->nd_next);
+          } catch (EmscriptenJump e) {
+            if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+              state = e.ret;
+              // catch block
+            } else {
+              throw;
             }
-            if (node->nd_tbl) {
-                VALUE *vars = ALLOCA_N(VALUE, node->nd_tbl[0]+1);
-                *vars++ = (VALUE)node;
-                ruby_scope->local_vars = vars;
-                rb_mem_clear(ruby_scope->local_vars, node->nd_tbl[0]);
-                ruby_scope->local_tbl = node->nd_tbl;
-            }
-            else {
-                ruby_scope->local_vars = 0;
-                ruby_scope->local_tbl  = 0;
-            }
-            if ((state = EXEC_TAG()) == 0) {
-                result = rb_eval(self, node->nd_next);
-            }
-            POP_TAG();
-            POP_SCOPE();
-            ruby_frame = frame.tmp;
-            if (saved_cref)
-                ruby_cref = saved_cref;
-            if (state) JUMP_TAG(state);
-        }
-        break;
+          }
+          POP_TAG();
+          POP_SCOPE();
+          ruby_frame = frame.tmp;
+          if (saved_cref)
+            ruby_cref = saved_cref;
+          if (state) JUMP_TAG(state);
+      }
+      break;
 
       case NODE_OP_ASGN1:
       {
@@ -4081,10 +4315,18 @@ module_setup(VALUE module, NODE *n)
 
     PUSH_CREF(module);
     PUSH_TAG(PROT_NONE);
-    if ((state = EXEC_TAG()) == 0) {
-        EXEC_EVENT_HOOK(RUBY_EVENT_CLASS, n, ruby_cbase,
-                        ruby_frame->last_func, ruby_frame->last_class);
-        result = rb_eval(ruby_cbase, node->nd_next);
+    state = emscripten_setjmp(prot_tag->buf);
+    try {
+      EXEC_EVENT_HOOK(RUBY_EVENT_CLASS, n, ruby_cbase,
+                  ruby_frame->last_func, ruby_frame->last_class);
+      result = rb_eval(ruby_cbase, node->nd_next);
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        // catch block
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     POP_CREF();
@@ -4458,26 +4700,34 @@ rb_longjmp(int tag, VALUE mesg)
     }
 
     if (RTEST(ruby_debug) && !NIL_P(ruby_errinfo)
-        && !rb_obj_is_kind_of(ruby_errinfo, rb_eSystemExit)) {
-        VALUE e = ruby_errinfo;
-        int status;
+      && !rb_obj_is_kind_of(ruby_errinfo, rb_eSystemExit)) {
+      VALUE e = ruby_errinfo;
+      int status;
 
-        PUSH_TAG(PROT_NONE);
-        if ((status = EXEC_TAG()) == 0) {
-            StringValue(e);
-            warn_printf("Exception `%s' at %s:%d - %s\n",
-                        rb_obj_classname(ruby_errinfo),
-                        ruby_sourcefile, ruby_sourceline,
-                        RSTRING(e)->ptr);
+      PUSH_TAG(PROT_NONE);
+      emscripten_setjmp(prot_tag->buf);
+      try {
+        StringValue(e);
+        warn_printf("Exception `%s' at %s:%d - %s\n",
+                rb_obj_classname(ruby_errinfo),
+                ruby_sourcefile, ruby_sourceline,
+                RSTRING(e)->ptr);
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          e.ret;
+          // catch block
+        } else {
+          throw;
         }
-        POP_TAG();
-        if (status == TAG_FATAL && ruby_errinfo == exception_error) {
-            ruby_errinfo = mesg;
-        }
-        else if (status) {
-            thread_reset_raised();
-            JUMP_TAG(status);
-        }
+      }
+      POP_TAG();
+      if (status == TAG_FATAL && ruby_errinfo == exception_error) {
+          ruby_errinfo = mesg;
+      }
+      else if (status) {
+          thread_reset_raised();
+          JUMP_TAG(status);
+      }
     }
 
     rb_trap_restore_mask();
@@ -4812,71 +5062,82 @@ rb_yield_0(VALUE val, VALUE self, VALUE klass, int flags, int avalue)
     var = block->var;
 
     if (var) {
-        PUSH_TAG(PROT_NONE);
-        if ((state = EXEC_TAG()) == 0) {
-            NODE *bvar = NULL;
-          block_var:
-            if (var == (NODE*)1) { /* no parameter || */
-                if (lambda && RARRAY(val)->len != 0) {
-                    rb_raise(rb_eArgError, "wrong number of arguments (%ld for 0)",
-                             RARRAY(val)->len);
+      PUSH_TAG(PROT_NONE);
+      
+      
+      
+      state = emscripten_setjmp(prot_tag->buf);
+      try {
+          NODE *bvar = NULL;
+        block_var:
+          if (var == (NODE*)1) { /* no parameter || */
+            if (lambda && RARRAY(val)->len != 0) {
+                rb_raise(rb_eArgError, "wrong number of arguments (%ld for 0)",
+                       RARRAY(val)->len);
+            }
+          }
+          else if (var == (NODE*)2) {
+            if (TYPE(val) == T_ARRAY && RARRAY(val)->len != 0) {
+                rb_raise(rb_eArgError, "wrong number of arguments (%ld for 0)",
+                       RARRAY(val)->len);
+            }
+          }
+          else if (!bvar && nd_type(var) == NODE_BLOCK_PASS) {
+            bvar = var->nd_body;
+            var = var->nd_args;
+            goto block_var;
+          }
+          else if (nd_type(var) == NODE_MASGN) {
+            if (!avalue) {
+                val = svalue_to_mrhs(val, var->nd_head);
+            }
+            massign(self, var, val, lambda);
+          }
+          else {
+            int len = 0;
+            if (avalue) {
+                len = RARRAY(val)->len;
+                if (len == 0) {
+                  goto zero_arg;
+                }
+                if (len == 1) {
+                  val = RARRAY(val)->ptr[0];
+                }
+                else {
+                  goto multi_values;
                 }
             }
-            else if (var == (NODE*)2) {
-                if (TYPE(val) == T_ARRAY && RARRAY(val)->len != 0) {
-                    rb_raise(rb_eArgError, "wrong number of arguments (%ld for 0)",
-                             RARRAY(val)->len);
+            else if (val == Qundef) {
+              zero_arg:
+                val = Qnil;
+              multi_values:
+                {
+                  ruby_current_node = var;
+                  rb_warn("multiple values for a block parameter (%d for 1)\n\tfrom %s:%d",
+                        len, cnode->nd_file, nd_line(cnode));
+                  ruby_current_node = cnode;
                 }
             }
-            else if (!bvar && nd_type(var) == NODE_BLOCK_PASS) {
-                bvar = var->nd_body;
-                var = var->nd_args;
-                goto block_var;
-            }
-            else if (nd_type(var) == NODE_MASGN) {
-                if (!avalue) {
-                    val = svalue_to_mrhs(val, var->nd_head);
-                }
-                massign(self, var, val, lambda);
-            }
-            else {
-                int len = 0;
-                if (avalue) {
-                    len = RARRAY(val)->len;
-                    if (len == 0) {
-                        goto zero_arg;
-                    }
-                    if (len == 1) {
-                        val = RARRAY(val)->ptr[0];
-                    }
-                    else {
-                        goto multi_values;
-                    }
-                }
-                else if (val == Qundef) {
-                  zero_arg:
-                    val = Qnil;
-                  multi_values:
-                    {
-                        ruby_current_node = var;
-                        rb_warn("multiple values for a block parameter (%d for 1)\n\tfrom %s:%d",
-                                len, cnode->nd_file, nd_line(cnode));
-                        ruby_current_node = cnode;
-                    }
-                }
-                assign(self, var, val, lambda);
-            }
-            if (bvar) {
-                VALUE blk;
-                if (flags & YIELD_PROC_CALL)
-                    blk = block->block_obj;
-                else
-                    blk = rb_block_proc();
-                assign(self, bvar, blk, 0);
-            }
+            assign(self, var, val, lambda);
+          }
+          if (bvar) {
+            VALUE blk;
+            if (flags & YIELD_PROC_CALL)
+                blk = block->block_obj;
+            else
+                blk = rb_block_proc();
+            assign(self, bvar, blk, 0);
+          }
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+          // catch block
+        } else {
+          throw;
         }
-        POP_TAG();
-        if (state) goto pop_state;
+      }
+      POP_TAG();
+      if (state) goto pop_state;
     }
     if (!node) {
       state = 0;
@@ -4886,34 +5147,37 @@ rb_yield_0(VALUE val, VALUE self, VALUE klass, int flags, int avalue)
 
     PUSH_ITER(block->iter);
     PUSH_TAG(lambda ? PROT_NONE : PROT_YIELD);
-    if ((state = EXEC_TAG()) == 0) {
-      redo:
+    state = emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      if (state == 0) {
+        redo:
         if (nd_type(node) == NODE_CFUNC || nd_type(node) == NODE_IFUNC) {
             switch (node->nd_state) {
               case YIELD_FUNC_LAMBDA:
-                if (!avalue) {
-                    val = rb_ary_new3(1, val);
-                }
-                break;
+              if (!avalue) {
+                  val = rb_ary_new3(1, val);
+              }
+              break;
               case YIELD_FUNC_AVALUE:
-                if (!avalue) {
-                    val = svalue_to_avalue(val);
-                }
-                break;
+              if (!avalue) {
+                  val = svalue_to_avalue(val);
+              }
+              break;
               default:
-                if (avalue) {
-                    val = avalue_to_svalue(val);
-                }
-                if (val == Qundef && node->nd_state != YIELD_FUNC_SVALUE)
-                    val = Qnil;
+              if (avalue) {
+                  val = avalue_to_svalue(val);
+              }
+              if (val == Qundef && node->nd_state != YIELD_FUNC_SVALUE)
+                  val = Qnil;
             }
             result = (*node->nd_cfnc)(val, node->nd_tval, self);
         }
         else {
             result = rb_eval(self, node);
         }
-    }
-    else {
+      }
+      else {
         switch (state) {
           case TAG_REDO:
             state = 0;
@@ -4921,21 +5185,29 @@ rb_yield_0(VALUE val, VALUE self, VALUE klass, int flags, int avalue)
             goto redo;
           case TAG_NEXT:
             if (!lambda) {
-                state = 0;
-                result = prot_tag->retval;
+              state = 0;
+              result = prot_tag->retval;
             }
             break;
           case TAG_BREAK:
             if (TAG_DST()) {
-                result = prot_tag->retval;
+              result = prot_tag->retval;
             }
             else {
-                lambda = Qtrue;        /* just pass TAG_BREAK */
+              lambda = Qtrue;      /* just pass TAG_BREAK */
             }
             break;
           default:
             break;
         }
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     POP_ITER();
@@ -5217,18 +5489,28 @@ rb_iterate _((VALUE(*it_proc)(VALUE),VALUE data1,VALUE(*bl_proc)(ANYARGS),VALUE 
     PUSH_TAG(PROT_LOOP);
     PUSH_BLOCK(0, node);
     PUSH_ITER(ITER_PRE);
-    state = EXEC_TAG();
-    if (state == 0) {
-  iter_retry:
+    state = emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      if (state == 0) {
+      iter_retry:
         retval = (*it_proc)(data1);
-    }
-    else if (state == TAG_BREAK && TAG_DST()) {
-        retval = prot_tag->retval;
-        state = 0;
-    }
-    else if (state == TAG_RETRY) {
+      }
+      else if (state == TAG_BREAK && TAG_DST()) {
+          retval = prot_tag->retval;
+          state = 0;
+      }
+      else if (state == TAG_RETRY) {
         state = 0;
         goto iter_retry;
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
     POP_ITER();
     POP_BLOCK();
@@ -5285,7 +5567,10 @@ rb_rescue2(b_proc, data1, r_proc, data2, va_alist)
     va_list args;
 
     PUSH_TAG(PROT_NONE);
-    switch (state = EXEC_TAG()) {
+    state = emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      switch (state) {
       case TAG_RETRY:
         if (!handle) break;
         handle = Qfalse;
@@ -5316,6 +5601,14 @@ rb_rescue2(b_proc, data1, r_proc, data2, va_alist)
             }
             ruby_errinfo = e_info;
         }
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     if (state) JUMP_TAG(state);
@@ -5339,10 +5632,21 @@ rb_protect(VALUE (*proc) _((VALUE)), VALUE data, int *state)
 
     PUSH_TAG(PROT_NONE);
     cont_protect = (VALUE)rb_node_newnode(NODE_MEMO, cont_protect, 0, 0);
-    if ((status = EXEC_TAG()) == 0) {
-        result = (*proc)(data);
+    emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      if (status == 0) {
+          result = (*proc)(data);
+      }
+      cont_protect = ((NODE *)cont_protect)->u1.value;
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        status = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
-    cont_protect = ((NODE *)cont_protect)->u1.value;
     POP_TAG();
     if (state) {
       *state = status;
@@ -5362,8 +5666,15 @@ rb_ensure _((VALUE(*b_proc)(ANYARGS),VALUE data1,VALUE(*e_proc)(ANYARGS),VALUE d
     VALUE retval;
 
     PUSH_TAG(PROT_NONE);
-    if ((state = EXEC_TAG()) == 0) {
-        result = (*b_proc)(data1);
+    state = emscripten_setjmp(prot_tag->buf);
+    try {
+      result = (*b_proc)(data1);
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     retval = prot_tag ? prot_tag->retval : Qnil;      /* save retval */
@@ -5383,15 +5694,23 @@ rb_with_disable_interrupt(VALUE (*proc)(ANYARGS), VALUE data)
 
     DEFER_INTS;
     {
-        int thr_critical = rb_thread_critical;
+      int thr_critical = rb_thread_critical;
 
-        rb_thread_critical = Qtrue;
-        PUSH_TAG(PROT_NONE);
-        if ((status = EXEC_TAG()) == 0) {
-            result = (*proc)(data);
+      rb_thread_critical = Qtrue;
+      PUSH_TAG(PROT_NONE);
+      status = emscripten_setjmp(prot_tag->buf);
+      try {
+        result = (*proc)(data);
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          status = e.ret;
+          // catch block
+        } else {
+          throw;
         }
-        POP_TAG();
-        rb_thread_critical = thr_critical;
+      }
+      POP_TAG();
+      rb_thread_critical = thr_critical;
     }
     ENABLE_INTS;
     if (status) JUMP_TAG(status);
@@ -5405,15 +5724,23 @@ stack_check()
     static int overflowing = 0;
 
     if (!overflowing && ruby_stack_check()) {
-        int state;
-        overflowing = 1;
-        PUSH_TAG(PROT_NONE);
-        if ((state = EXEC_TAG()) == 0) {
-            rb_exc_raise(sysstack_error);
+      int state;
+      overflowing = 1;
+      PUSH_TAG(PROT_NONE);
+      state = emscripten_setjmp(prot_tag->buf);
+      try {
+        rb_exc_raise(sysstack_error);
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+          // catch block
+        } else {
+          throw;
         }
-        POP_TAG();
-        overflowing = 0;
-        JUMP_TAG(state);
+      }
+      POP_TAG();
+      overflowing = 0;
+      JUMP_TAG(state);
     }
 }
 
@@ -5678,35 +6005,42 @@ rb_call0(VALUE klass, VALUE recv, ID id, ID oid, int argc, VALUE *argv, NODE * v
 
     switch (nd_type(body)) {
       case NODE_CFUNC:
-        {
-            int len = body->nd_argc;
+      {
+          int len = body->nd_argc;
 
-            if (len < -2) {
-                rb_bug("bad argc (%d) specified for `%s(%s)'",
-                       len, rb_class2name(klass), rb_id2name(id));
-            }
-            if (event_hooks) {
-                int state;
+          if (len < -2) {
+            rb_bug("bad argc (%d) specified for `%s(%s)'",
+                   len, rb_class2name(klass), rb_id2name(id));
+          }
+          if (event_hooks) {
+            int state;
 
-                EXEC_EVENT_HOOK(RUBY_EVENT_C_CALL, ruby_current_node,
-                                recv, id, klass);
-                PUSH_TAG(PROT_FUNC);
-                if ((state = EXEC_TAG()) == 0) {
-                    result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
-                }
-                POP_TAG();
-                ruby_current_node = ruby_frame->node;
-                EXEC_EVENT_HOOK(RUBY_EVENT_C_RETURN, ruby_current_node,
-                                recv, id, klass);
-                if (state) JUMP_TAG(state);
-            }
-            else {
+            EXEC_EVENT_HOOK(RUBY_EVENT_C_CALL, ruby_current_node,
+                        recv, id, klass);
+            PUSH_TAG(PROT_FUNC);
+            state = emscripten_setjmp(prot_tag->buf);
+            try {
                 result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
+            } catch (EmscriptenJump e) {
+              if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+                state = e.ret;
+              } else {
+                throw;
+              }
             }
-        }
-        break;
+            POP_TAG();
+            ruby_current_node = ruby_frame->node;
+            EXEC_EVENT_HOOK(RUBY_EVENT_C_RETURN, ruby_current_node,
+                        recv, id, klass);
+            if (state) JUMP_TAG(state);
+          }
+          else {
+            result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
+          }
+      }
+      break;
 
-        /* for attr get/set */
+      /* for attr get/set */
       case NODE_IVAR:
       if (argc != 0) {
           rb_raise(rb_eArgError, "wrong number of arguments (%d for 0)", argc);
@@ -5742,37 +6076,41 @@ rb_call0(VALUE klass, VALUE recv, ID id, ID oid, int argc, VALUE *argv, NODE * v
       break;
 
       case NODE_SCOPE:
-        {
-            int state;
-            VALUE *local_vars;        /* OK */
-            NODE *saved_cref = 0;
+      {
+          int state;
+          VALUE *local_vars;      /* OK */
+          NODE *saved_cref = 0;
 
-            PUSH_SCOPE();
-            if (body->nd_rval) {
-                saved_cref = ruby_cref;
-                ruby_cref = (NODE*)body->nd_rval;
-            }
-            PUSH_CLASS(ruby_cbase);
-            if (body->nd_tbl) {
-                local_vars = TMP_ALLOC(body->nd_tbl[0]+1);
-                *local_vars++ = (VALUE)body;
-                rb_mem_clear(local_vars, body->nd_tbl[0]);
-                ruby_scope->local_tbl = body->nd_tbl;
-                ruby_scope->local_vars = local_vars;
-            }
-            else {
-                local_vars = ruby_scope->local_vars = 0;
-                ruby_scope->local_tbl  = 0;
-            }
-            b2 = body = body->nd_next;
+          PUSH_SCOPE();
+          if (body->nd_rval) {
+            saved_cref = ruby_cref;
+            ruby_cref = (NODE*)body->nd_rval;
+          }
+          PUSH_CLASS(ruby_cbase);
+          if (body->nd_tbl) {
+            local_vars = TMP_ALLOC(body->nd_tbl[0]+1);
+            *local_vars++ = (VALUE)body;
+            rb_mem_clear(local_vars, body->nd_tbl[0]);
+            ruby_scope->local_tbl = body->nd_tbl;
+            ruby_scope->local_vars = local_vars;
+          }
+          else {
+            local_vars = ruby_scope->local_vars = 0;
+            ruby_scope->local_tbl  = 0;
+          }
+          b2 = body = body->nd_next;
 
-            if (NOEX_SAFE(flags) > ruby_safe_level) {
-                safe = ruby_safe_level;
-                ruby_safe_level = NOEX_SAFE(flags);
-            }
-            PUSH_VARS();
-            PUSH_TAG(PROT_FUNC);
-            if ((state = EXEC_TAG()) == 0) {
+          if (NOEX_SAFE(flags) > ruby_safe_level) {
+            safe = ruby_safe_level;
+            ruby_safe_level = NOEX_SAFE(flags);
+          }
+          PUSH_VARS();
+          PUSH_TAG(PROT_FUNC);
+
+          state = emscripten_setjmp(prot_tag->buf);
+          try_again:
+          try {
+            if (state == 0) {
                 NODE *node = 0;
                 int i, nopt = 0;
 
@@ -5858,33 +6196,41 @@ rb_call0(VALUE klass, VALUE recv, ID id, ID oid, int argc, VALUE *argv, NODE * v
                 result = prot_tag->retval;
                 state = 0;
             }
-            POP_TAG();
-            if (event_hooks) {
-                EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, ruby_current_node, recv, id, klass);
+          } catch (EmscriptenJump e) {
+            if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+              state = e.ret;
+              goto try_again;
+            } else {
+              throw;
             }
-            POP_VARS();
-            POP_CLASS();
-            POP_SCOPE();
-            ruby_cref = saved_cref;
-            if (safe >= 0) ruby_safe_level = safe;
-            switch (state) {
-              case 0:
-                break;
+          }
+          POP_TAG();
+          if (event_hooks) {
+            EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, ruby_current_node, recv, id, klass);
+          }
+          POP_VARS();
+          POP_CLASS();
+          POP_SCOPE();
+          ruby_cref = saved_cref;
+          if (safe >= 0) ruby_safe_level = safe;
+          switch (state) {
+            case 0:
+            break;
 
-              case TAG_BREAK:
-              case TAG_RETURN:
-                JUMP_TAG(state);
-                break;
+            case TAG_BREAK:
+            case TAG_RETURN:
+            JUMP_TAG(state);
+            break;
 
-              case TAG_RETRY:
-                if (rb_block_given_p()) JUMP_TAG(state);
-                /* fall through */
-              default:
-                jump_tag_but_local_jump(state, result);
-                break;
-            }
-        }
-        break;
+            case TAG_RETRY:
+            if (rb_block_given_p()) JUMP_TAG(state);
+            /* fall through */
+            default:
+            jump_tag_but_local_jump(state, result);
+            break;
+          }
+      }
+      break;
 
       default:
       unknown_node(body);
@@ -6047,8 +6393,15 @@ rb_funcall_rescue(recv, mid, n, va_alist)
     va_init_list(ar, n);
 
     PUSH_TAG(PROT_NONE);
-    if ((status = EXEC_TAG()) == 0) {
-        result = vafuncall(recv, mid, n, &ar);
+    status = emscripten_setjmp(prot_tag->buf);
+    try {
+      result = vafuncall(recv, mid, n, &ar);
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        status = e.ret;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     switch (status) {
@@ -6303,19 +6656,26 @@ eval(VALUE self, VALUE src, VALUE scope, const char *file, int line)
       ruby_class = RBASIC(ruby_class)->klass;
     }
     PUSH_TAG(PROT_NONE);
-    if ((state = EXEC_TAG()) == 0) {
-        NODE *node;
+    state = emscripten_setjmp(prot_tag->buf);
+    try {
+      NODE *node;
 
-        ruby_safe_level = 0;
-        result = ruby_errinfo;
-        ruby_errinfo = Qnil;
-        node = compile(src, file, line);
-        ruby_safe_level = safe;
-        if (ruby_nerrs > 0) {
-            compile_error(0);
-        }
-        if (!NIL_P(result)) ruby_errinfo = result;
-        result = eval_node(self, node);
+      ruby_safe_level = 0;
+      result = ruby_errinfo;
+      ruby_errinfo = Qnil;
+      node = compile(src, file, line);
+      ruby_safe_level = safe;
+      if (ruby_nerrs > 0) {
+          compile_error(0);
+      }
+      if (!NIL_P(result)) ruby_errinfo = result;
+      result = eval_node(self, node);
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     POP_CLASS();
@@ -6456,8 +6816,15 @@ exec_under(VALUE (*func)(...), VALUE under, VALUE cbase, VALUE *args)
     mode = scope_vmode;
     SCOPE_SET(SCOPE_PUBLIC);
     PUSH_TAG(PROT_NONE);
-    if ((state = EXEC_TAG()) == 0) {
-        val = (*func)(args);
+    state = emscripten_setjmp(prot_tag->buf);
+    try {
+      val = (*func)(args);
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     if (cbase) POP_CREF();
@@ -6743,37 +7110,47 @@ rb_load(VALUE fname, int wrap)
     /* default visibility is private at loading toplevel */
     SCOPE_SET(SCOPE_PRIVATE);
     PUSH_TAG(PROT_NONE);
-    state = EXEC_TAG();
-    last_func = ruby_frame->last_func;
-    last_node = ruby_current_node;
-    if (!ruby_current_node && ruby_sourcefile) {
-        last_node = NEW_NEWLINE(0);
-    }
-    ruby_current_node = 0;
-    if (state == 0) {
-        NODE *node;
-        volatile int critical;
+    state = emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      last_func = ruby_frame->last_func;
+      last_node = ruby_current_node;
+      if (!ruby_current_node && ruby_sourcefile) {
+          last_node = NEW_NEWLINE(0);
+      }
+      ruby_current_node = 0;
+      if (state == 0) {
+          NODE *node;
+          volatile int critical;
 
-        DEFER_INTS;
-        ruby_in_eval++;
-        critical = rb_thread_critical;
-        rb_thread_critical = Qtrue;
-        rb_load_file(RSTRING(fname)->ptr);
-        ruby_in_eval--;
-        node = ruby_eval_tree;
-        rb_thread_critical = critical;
-        ALLOW_INTS;
-        if (ruby_nerrs == 0) {
-            eval_node(self, node);
-        }
-    }
-    ruby_frame->last_func = last_func;
-    ruby_current_node = last_node;
-    ruby_sourcefile = 0;
-    ruby_set_current_source();
-    if (ruby_scope->flags == SCOPE_ALLOCA && ruby_class == rb_cObject) {
-        if (ruby_scope->local_tbl) /* toplevel was empty */
-            free(ruby_scope->local_tbl);
+          DEFER_INTS;
+          ruby_in_eval++;
+          critical = rb_thread_critical;
+          rb_thread_critical = Qtrue;
+          rb_load_file(RSTRING(fname)->ptr);
+          ruby_in_eval--;
+          node = ruby_eval_tree;
+          rb_thread_critical = critical;
+          ALLOW_INTS;
+          if (ruby_nerrs == 0) {
+              eval_node(self, node);
+          }
+      }
+      ruby_frame->last_func = last_func;
+      ruby_current_node = last_node;
+      ruby_sourcefile = 0;
+      ruby_set_current_source();
+      if (ruby_scope->flags == SCOPE_ALLOCA && ruby_class == rb_cObject) {
+          if (ruby_scope->local_tbl) /* toplevel was empty */
+              free(ruby_scope->local_tbl);
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     rb_prohibit_interrupt = prohibit_int;
@@ -6799,8 +7176,15 @@ rb_load_protect(VALUE fname, int wrap, int *state)
     int status;
 
     PUSH_TAG(PROT_NONE);
-    if ((status = EXEC_TAG()) == 0) {
-        rb_load(fname, wrap);
+    status = emscripten_setjmp(prot_tag->buf);
+    try {
+      rb_load(fname, wrap);
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        status = e.ret;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     if (state) *state = status;
@@ -7090,38 +7474,45 @@ rb_require_safe(VALUE fname, int safe)
     saved.func = ruby_frame->last_func;
     saved.safe = ruby_safe_level;
     PUSH_TAG(PROT_NONE);
-    if ((state = EXEC_TAG()) == 0) {
-        VALUE feature, path;
-        long handle;
-        int found;
+    state = emscripten_setjmp(prot_tag->buf);
+    try {
+      VALUE feature, path;
+      long handle;
+      int found;
 
-        ruby_safe_level = safe;
-        found = search_required(fname, &feature, &path);
-        if (found) {
-            if (!path || !(ftptr = load_lock(RSTRING_PTR(feature)))) {
-                result = Qfalse;
-            }
-            else {
-                ruby_safe_level = 0;
-                switch (found) {
-                  case 'r':
-                    rb_load(path, 0);
-                    break;
+      ruby_safe_level = safe;
+      found = search_required(fname, &feature, &path);
+      if (found) {
+          if (!path || !(ftptr = load_lock(RSTRING_PTR(feature)))) {
+            result = Qfalse;
+          }
+          else {
+            ruby_safe_level = 0;
+            switch (found) {
+              case 'r':
+                rb_load(path, 0);
+                break;
 
-                  case 's':
-                    ruby_current_node = 0;
-                    ruby_sourcefile = rb_source_filename(RSTRING(path)->ptr);
-                    ruby_sourceline = 0;
-                    ruby_frame->last_func = 0;
-                    SCOPE_SET(SCOPE_PUBLIC);
-                    handle = (long)dln_load(RSTRING(path)->ptr);
-                    rb_ary_push(ruby_dln_librefs, LONG2NUM(handle));
-                    break;
-                }
-                rb_provide_feature(feature);
-                result = Qtrue;
+              case 's':
+                ruby_current_node = 0;
+                ruby_sourcefile = rb_source_filename(RSTRING(path)->ptr);
+                ruby_sourceline = 0;
+                ruby_frame->last_func = 0;
+                SCOPE_SET(SCOPE_PUBLIC);
+                handle = (long)dln_load(RSTRING(path)->ptr);
+                rb_ary_push(ruby_dln_librefs, LONG2NUM(handle));
+                break;
             }
-        }
+            rb_provide_feature(feature);
+            result = Qtrue;
+          }
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     ruby_current_node = saved.node;
@@ -7736,40 +8127,54 @@ rb_exec_end_proc()
     volatile int safe = ruby_safe_level;
 
     while (ephemeral_end_procs) {
-        tmp_end_procs = link = ephemeral_end_procs;
-        ephemeral_end_procs = 0;
-        while (link) {
-            PUSH_TAG(PROT_NONE);
-            if ((status = EXEC_TAG()) == 0) {
-                ruby_safe_level = link->safe;
-                ((void (*) _((VALUE)))(*link->func))(link->data);
+      tmp_end_procs = link = ephemeral_end_procs;
+      ephemeral_end_procs = 0;
+      while (link) {
+          PUSH_TAG(PROT_NONE);
+          status = emscripten_setjmp(prot_tag->buf);
+          try {
+            ruby_safe_level = link->safe;
+            ((void (*) _((VALUE)))(*link->func))(link->data);
+          } catch (EmscriptenJump e) {
+            if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+              status = e.ret;
+            } else {
+              throw;
             }
-            POP_TAG();
-            if (status) {
-                error_handle(status);
-            }
-            tmp = link;
-            tmp_end_procs = link = link->next;
-            free(tmp);
-        }
+          }
+          POP_TAG();
+          if (status) {
+            error_handle(status);
+          }
+          tmp = link;
+          tmp_end_procs = link = link->next;
+          free(tmp);
+      }
     }
     while (end_procs) {
-        tmp_end_procs = link = end_procs;
-        end_procs = 0;
-        while (link) {
-            PUSH_TAG(PROT_NONE);
-            if ((status = EXEC_TAG()) == 0) {
-                ruby_safe_level = link->safe;
-                ((void (*) _((VALUE)))(*link->func))(link->data);
+      tmp_end_procs = link = end_procs;
+      end_procs = 0;
+      while (link) {
+          PUSH_TAG(PROT_NONE);
+          status = emscripten_setjmp(prot_tag->buf);
+          try {
+            ruby_safe_level = link->safe;
+            ((void (*) _((VALUE)))(*link->func))(link->data);
+          } catch (EmscriptenJump e) {
+            if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+              status = e.ret;
+            } else {
+              throw;
             }
-            POP_TAG();
-            if (status) {
-                error_handle(status);
-            }
-            tmp = link;
-            tmp_end_procs = link = link->next;
-            free(tmp);
-        }
+          }
+          POP_TAG();
+          if (status) {
+            error_handle(status);
+          }
+          tmp = link;
+          tmp_end_procs = link = link->next;
+          free(tmp);
+      }
     }
     ruby_safe_level = safe;
 }
@@ -8461,14 +8866,24 @@ proc_invoke(VALUE proc, VALUE args, VALUE self, VALUE klass)
     PUSH_ITER(ITER_CUR);
     ruby_frame->iter = ITER_CUR;
     PUSH_TAG(pcall ? PROT_LAMBDA : PROT_NONE);
-    state = EXEC_TAG();
-    if (state == 0) {
-        proc_set_safe_level(proc);
-        result = rb_yield_0(args, self, (self!=Qundef)?CLASS_OF(self):0,
-                            pcall | YIELD_PROC_CALL, avalue);
-    }
-    else if (TAG_DST()) {
-        result = prot_tag->retval;
+    state = emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      if (state == 0) {
+          proc_set_safe_level(proc);
+          result = rb_yield_0(args, self, (self!=Qundef)?CLASS_OF(self):0,
+                              pcall | YIELD_PROC_CALL, avalue);
+      }
+      else if (TAG_DST()) {
+          result = prot_tag->retval;
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     POP_ITER();
@@ -8773,21 +9188,31 @@ block_pass(VALUE self, NODE *node)
       ruby_frame->iter = ITER_PRE;
 
     PUSH_TAG(PROT_LOOP);
-    state = EXEC_TAG();
-    if (state == 0) {
-      retry:
-        proc_set_safe_level(proc);
-        if (safe > ruby_safe_level)
-            ruby_safe_level = safe;
-        result = rb_eval(self, node->nd_iter);
-    }
-    else if (state == TAG_BREAK && TAG_DST()) {
-        result = prot_tag->retval;
-        state = 0;
-    }
-    else if (state == TAG_RETRY) {
-        state = 0;
-        goto retry;
+    state = emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      if (state == 0) {
+        retry:
+          proc_set_safe_level(proc);
+          if (safe > ruby_safe_level)
+              ruby_safe_level = safe;
+          result = rb_eval(self, node->nd_iter);
+      }
+      else if (state == TAG_BREAK && TAG_DST()) {
+          result = prot_tag->retval;
+          state = 0;
+      }
+      else if (state == TAG_RETRY) {
+          state = 0;
+          goto retry;
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     POP_ITER();
@@ -10206,7 +10631,7 @@ rb_thread_switch(int n)
 }
 
 #define THREAD_SAVE_CONTEXT(th) \
-    (rb_thread_switch((rb_thread_save_context(th), ruby_setjmp(((void)(0)),(th)->context))))
+    (rb_thread_switch((rb_thread_save_context(th), ruby_setjmp((th)->context))))
 
 NORETURN(static void rb_thread_restore_context _((rb_thread_t,int)));
 NORETURN(NOINLINE(static void rb_thread_restore_context_0(rb_thread_t,int,void*)));
@@ -11756,17 +12181,29 @@ rb_thread_start_0(VALUE (*fn)(...), void *arg, rb_thread_t th)
     }
 
     PUSH_TAG(PROT_THREAD);
-    if ((state = EXEC_TAG()) == 0) {
-        if (THREAD_SAVE_CONTEXT(th) == 0) {
-            curr_thread = th;
-            th->result = (*fn)(arg, th);
-        }
-        th = th_save;
+    state = emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      if (state == 0) {
+          if (THREAD_SAVE_CONTEXT(th) == 0) {
+              curr_thread = th;
+              th->result = (*fn)(arg, th);
+          }
+          th = th_save;
+      }
+      else if (TAG_DST()) {
+          th = th_save;
+          th->result = prot_tag->retval;
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
-    else if (TAG_DST()) {
-        th = th_save;
-        th->result = prot_tag->retval;
-    }
+
     POP_TAG();
     status = th->status;
 
@@ -12838,19 +13275,26 @@ rb_exec_recursive(VALUE (*func) _((VALUE, VALUE, int)), VALUE obj, VALUE arg)
       return (*func) (obj, arg, Qtrue);
     }
     else {
-        VALUE result = Qundef;
-        int state;
+      VALUE result = Qundef;
+      int state;
 
-        hash = recursive_push(hash, objid);
-        PUSH_TAG(PROT_NONE);
-        if ((state = EXEC_TAG()) == 0) {
-            result = (*func) (obj, arg, Qfalse);
+      hash = recursive_push(hash, objid);
+      PUSH_TAG(PROT_NONE);
+      state = emscripten_setjmp(prot_tag->buf);
+      try {
+        result = (*func) (obj, arg, Qfalse);
+      } catch (EmscriptenJump e) {
+        if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+          state = e.ret;
+        } else {
+          throw;
         }
-        POP_TAG();
-        recursive_pop(hash, objid);
-        if (state)
-            JUMP_TAG(state);
-        return result;
+      }
+      POP_TAG();
+      recursive_pop(hash, objid);
+      if (state)
+          JUMP_TAG(state);
+      return result;
     }
 }
 
@@ -12985,12 +13429,23 @@ rb_f_catch(VALUE dmy, VALUE tag)
 
     tag = ID2SYM(rb_to_id(tag));
     PUSH_TAG(tag);
-    if ((state = EXEC_TAG()) == 0) {
-        val = rb_yield_0(tag, 0, 0, 0, Qfalse);
-    }
-    else if (state == TAG_THROW && tag == prot_tag->dst) {
-        val = prot_tag->retval;
-        state = 0;
+    state = emscripten_setjmp(prot_tag->buf);
+    try_again:
+    try {
+      if (state == 0) {
+          val = rb_yield_0(tag, 0, 0, 0, Qfalse);
+      }
+      else if (state == TAG_THROW && tag == prot_tag->dst) {
+          val = prot_tag->retval;
+          state = 0;
+      }
+    } catch (EmscriptenJump e) {
+      if (emscripten_matchjmp(e.env, prot_tag->buf)) {
+        state = e.ret;
+        goto try_again;
+      } else {
+        throw;
+      }
     }
     POP_TAG();
     if (state) JUMP_TAG(state);
