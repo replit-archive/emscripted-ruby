@@ -1,10 +1,10 @@
 #!/bin/bash
 
-CLOSURE_JAR=/home/max/emscripten-workspace/closure/build/compiler.jar
 FLAGS=" -fno-operator-names -fpermissive"
-RUBY_LIB_PATH=lib
-RUN_CLOSURE=1
 RELOOP=0
+RUBY_LIB_PATH=lib
+CLOSURE_JAR=/home/max/emscripten-workspace/closure/build/compiler.jar
+RUN_CLOSURE=1
 
 EMMAKEN=`pwd`/emscripten/tools/emmakenxx.py
 EMSCRIPTEN=`pwd`/emscripten/emscripten.py
@@ -46,7 +46,7 @@ coffee /home/max/emscripten-workspace/emscripten/tools/eliminator/eliminator.cof
 
 if [ $RUN_CLOSURE -eq 1 ]; then
   echo 'Running closure compiler...'
-  java -Xmx4g -jar /home/max/emscripten-workspace/closure/build/compiler.jar --compilation_level SIMPLE_OPTIMIZATIONS --js ../dist/ruby.opt.js --js_output_file ../dist/ruby.closure.js
+  java -Xmx4g -jar $CLOSURE_JAR --compilation_level SIMPLE_OPTIMIZATIONS --js ../dist/ruby.opt.js --js_output_file ../dist/ruby.closure.js
 fi;
 
 echo 'Done.'
