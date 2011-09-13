@@ -1,12 +1,13 @@
 #!/bin/bash
 
-EMSCRIPTEN_ROOT=/home/max/emscripten-workspace/emscripten
-EMMAKEN=$EMSCRIPTEN_ROOT/tools/emmakenxx.py
-LLVM_DIS=/home/max/emscripten-workspace/llvm-build/Release/bin/llvm-dis
 CLOSURE_JAR=/home/max/emscripten-workspace/closure/build/compiler.jar
 FLAGS=" -fno-operator-names -fpermissive"
 RUBY_LIB_PATH=lib
-RUN_CLOSURE=0
+RUN_CLOSURE=1
+RELOOP=0
+
+EMMAKEN=`pwd`/emscripten/tools/emmakenxx.py
+EMSCRIPTEN=`pwd`/emscripten/emscripten.py
 
 set -e
 
@@ -16,11 +17,10 @@ echo 'Compiling to LLVM...'
 CFLAGS=$FLAGS RANLIB=$EMMAKEN AR=$EMMAKEN CXX=$EMMAKEN CC=$EMMAKEN ./configure --without-pthread
 patch config.h < ../config.h.patch
 make miniruby
-$LLVM_DIS --show-annotations libruby-static.a
 
 echo 'Running Emscripten...'
-$EMSCRIPTEN_ROOT/emscripten.py \
-  libruby-static.a.ll \
+$EMSCRIPTEN \
+  libruby-static.a.bc \
   -m \
   -O \
   -o ruby.js \
@@ -30,7 +30,8 @@ $EMSCRIPTEN_ROOT/emscripten.py \
   -s INVOKE_RUN=0 \
   -s SAFE_HEAP=0 \
   -s ASSERTIONS=0 \
-  -s OPTIMIZE=1
+  -s OPTIMIZE=1 \
+  -s RELOOP=$RELOOP
 
 echo 'Touching up...'
 mkdir -p ../dist

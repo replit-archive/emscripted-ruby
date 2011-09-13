@@ -23,13 +23,7 @@ this['Ruby'] = {
   'eval': function(command) {
     if (!this.isInitialized) throw new Error('Ruby runtime not initialized.');
     var commandPtr = this.allocateString(command);
-    try {
-      var result = _rb_eval_string(commandPtr);
-    } catch (e) {
-      // Null exceptions are side effects from the setjmp conversion and are
-      // used just to unwind the stack. We can ignore them.
-      if (e !== 0) throw e;
-    }
+    var result = _rb_eval_string(commandPtr);
     _free(commandPtr);
     return result;
   },
