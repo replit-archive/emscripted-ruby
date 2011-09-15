@@ -2,6 +2,7 @@
 
 FLAGS=" -fno-operator-names -fpermissive"
 RELOOP=0
+PREINITIALIZED_MEMORY=3145728
 RUBY_LIB_PATH=lib
 CLOSURE_JAR=/home/max/emscripten-workspace/closure/build/compiler.jar
 RUN_CLOSURE=1
@@ -31,6 +32,7 @@ $EMSCRIPTEN \
   -s SAFE_HEAP=0 \
   -s ASSERTIONS=0 \
   -s OPTIMIZE=1 \
+  -s FAST_MEMORY=$PREINITIALIZED_MEMORY \
   -s RELOOP=$RELOOP
 
 echo 'Touching up...'
