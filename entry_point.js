@@ -11,7 +11,13 @@ this['Ruby'] = {
     // Wheee, infinite stack!
     var variable_in_this_stack_frame = allocate(4, 'i32', ALLOC_STACK);
     _ruby_init_stack(variable_in_this_stack_frame);
-    _ruby_stack_check = function () { return false; };
+    // The Ruby garbage collector is currently incompatible with Emscripten, so
+    // we disable it completely. This causes memory leaks, but prevents crashes.
+    // TODO: Get the garbage collector to work (maybe stack direction issues?).
+    //       Requires #define C_ALLOCA 1 for a start (garbage_collect llvm bug).
+    _rb_gc_disable();
+    _rb_gc_enable = function () { return 0; };
+    _ruby_stack_check = function () { return 0; };
 
     _ruby_init();
     var includeStr = Ruby.allocateString('.');
