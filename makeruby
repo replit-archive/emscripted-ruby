@@ -1,14 +1,29 @@
 #!/bin/bash
 
-FLAGS=" -fno-operator-names -fpermissive"
-RELOOP=0
-PREINITIALIZED_MEMORY=3145728
-RUBY_LIB_PATH=lib
-CLOSURE_JAR=/home/max/emscripten-workspace/closure/build/compiler.jar
-RUN_CLOSURE=1
+################################################################################
+#                                    Config                                    #
+################################################################################
 
-EMMAKEN=`pwd`/emscripten/tools/emmakenxx.py
-EMSCRIPTEN=`pwd`/emscripten/emscripten.py
+# What extra flags to pass to the C compiler.
+FLAGS=" -fno-operator-names -fpermissive"
+# Whether the build should include Emscripten's reloop optimizations (0/1).
+RELOOP=0
+# The amount of memory to preinitialize at runtime (tweak until v8 stops being
+# incredibly slow).
+PREINITIALIZED_MEMORY=3145728
+# Where the Ruby library will reside, relative to the core JS file.
+RUBY_LIB_PATH=lib
+# Whether to run the Closure Compiler on the result (0/1).
+RUN_CLOSURE=1
+# Where the Closure Compiler JAR can be found. Unused if RUN_CLOSURE=0.
+CLOSURE_JAR=/home/max/emscripten-workspace/closure/build/compiler.jar
+
+################################################################################
+#                                    Script                                    #
+################################################################################
+
+EMSCRIPTEN=`pwd`/emscripten
+EMMAKEN=$EMSCRIPTEN/tools/emmakenxx.py
 
 set -e
 
@@ -20,7 +35,7 @@ patch config.h < ../config.h.patch
 make miniruby
 
 echo 'Running Emscripten...'
-$EMSCRIPTEN \
+$EMSCRIPTEN/emscripten.py \
   libruby-static.a.bc \
   -m \
   -O \
@@ -44,7 +59,7 @@ sed -i "s~\", \"./~\", \"./$RUBY_LIB_PATH/~" ../dist/ruby.js
 cat ../entry_point.js >> ../dist/ruby.js
 
 echo 'Running eliminator...'
-coffee /home/max/emscripten-workspace/emscripten/tools/eliminator/eliminator.coffee < ../dist/ruby.js > ../dist/ruby.opt.js
+coffee $EMSCRIPTEN/tools/eliminator/eliminator.coffee < ../dist/ruby.js > ../dist/ruby.opt.js
 
 if [ $RUN_CLOSURE -eq 1 ]; then
   echo 'Running closure compiler...'
