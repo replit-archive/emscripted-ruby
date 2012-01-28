@@ -61,10 +61,6 @@ char *ruby_strdup _((const char*));
 char *ruby_getcwd _((void));
 #define my_getcwd() ruby_getcwd()
 
-extern "C" double ruby_strtod _((const char*, char **));
-#undef strtod
-#define strtod(s,e) ruby_strtod(s,e)
-
 #endif /* UTIL_H */
 
 }
