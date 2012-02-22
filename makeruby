@@ -24,13 +24,18 @@ CLOSURE_JAR=/home/max/emscripten-workspace/closure/build/compiler.jar
 
 EMSCRIPTEN=`pwd`/emscripten
 EMMAKEN=$EMSCRIPTEN/tools/emmakenxx.py
-
+CPP=/lib/cpp
+case `uname -s` in
+    Darwin)
+        CPP=/usr/bin/cpp
+    ;;
+esac
 set -e
 
 cd ruby-1.8.7
 
 echo 'Compiling to LLVM...'
-CFLAGS=$FLAGS RANLIB=$EMMAKEN AR=$EMMAKEN CXX=$EMMAKEN CC=$EMMAKEN ./configure --without-pthread
+CFLAGS=$FLAGS RANLIB=$EMMAKEN AR=$EMMAKEN CXX=$EMMAKEN CPP=$CPP CC=$EMMAKEN ./configure --without-pthread
 patch config.h < ../config.h.patch
 make miniruby
 
